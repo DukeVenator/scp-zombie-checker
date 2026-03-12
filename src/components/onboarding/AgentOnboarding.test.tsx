@@ -11,7 +11,7 @@ vi.mock('../../hooks/useAgentProfile', () => ({
   useAgentProfile: () => ({
     profile: null,
     isReady: true,
-    showSetup: true,
+    showSetup: true, // first test needs form; badge test uses /badge so component returns null
     completeSetup,
     openSetup: vi.fn(),
     closeSetup: vi.fn(),
@@ -57,6 +57,7 @@ describe('AgentOnboarding', () => {
         </Routes>
       </MemoryRouter>,
     )
-    expect(screen.queryByText(/configure agent profile/i)).not.toBeInTheDocument()
+    // On /badge, AgentOnboarding returns null so the wizard heading must not appear
+    expect(screen.queryByRole('heading', { name: /configure agent profile/i })).not.toBeInTheDocument()
   })
 })

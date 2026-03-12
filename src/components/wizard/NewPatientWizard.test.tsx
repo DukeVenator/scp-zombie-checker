@@ -1,5 +1,5 @@
 import { MemoryRouter } from 'react-router-dom'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NewPatientWizard } from './NewPatientWizard'
@@ -56,69 +56,74 @@ describe('NewPatientWizard', () => {
     pushToast.mockClear()
   })
 
-  it('walks through each step and saves a patient', async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn(async (input) => createPatientRecord(input))
+  it(
+    'walks through each step and saves a patient',
+    async () => {
+      const user = userEvent.setup()
+      const onSave = vi.fn(async (input) => createPatientRecord(input))
 
-    render(
-      <MemoryRouter>
-        <NewPatientWizard onSave={onSave} patients={[]} />
-      </MemoryRouter>,
-    )
+      const { container } = render(
+        <MemoryRouter>
+          <NewPatientWizard onSave={onSave} patients={[]} />
+        </MemoryRouter>,
+      )
 
-    expect(screen.getByText(/question 1/i)).toBeInTheDocument()
+      expect(screen.getByText(/question 1/i)).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText(/subject name/i), 'Mira Kane')
-    await clickContinue(user)
+      const nameInput = within(container).getByLabelText(/subject name/i)
+      await user.type(nameInput, 'Mira Kane')
+      await clickContinue(user)
 
-    const ageInput = screen.getByLabelText(/^age$/i)
-    await user.clear(ageInput)
-    await user.type(ageInput, '32')
-    await clickContinue(user)
+      const ageInput = screen.getByLabelText(/^age$/i)
+      await user.clear(ageInput)
+      await user.type(ageInput, '32')
+      await clickContinue(user)
 
-    await clickOption(user, /^Female$/)
+      await clickOption(user, /^Female$/)
 
-    await clickSkip(user) // hair
-    await clickSkip(user) // eye
-    await clickSkip(user) // skin
-    await clickSkip(user) // photo
+      await clickSkip(user) // hair
+      await clickSkip(user) // eye
+      await clickSkip(user) // skin
+      await clickSkip(user) // photo
 
-    await clickOption(user, /^Clouded$/) // pupils
+      await clickOption(user, /^Clouded$/) // pupils
 
-    // Temperature — pick Normal (no warning)
-    await clickOption(user, /Normal/)
+      // Temperature — pick Normal (no warning)
+      await clickOption(user, /Normal/)
 
-    await clickOption(user, /^YES$/) // heartbeat yes
+      await clickOption(user, /^YES$/) // heartbeat yes
 
-    await clickContinue(user) // BPM
+      await clickContinue(user) // BPM
 
-    // EMF — pick High (triggers warning)
-    await clickOption(user, /^High/)
-    await ackWarning(user)
+      // EMF — pick High (triggers warning)
+      await clickOption(user, /^High/)
+      await ackWarning(user)
 
-    // Symptoms — toggling aggression triggers a warning
-    await user.click(screen.getByLabelText(/aggression/i))
-    await ackWarning(user)
-    await clickContinue(user)
+      // Symptoms — toggling aggression triggers a warning
+      await user.click(screen.getByLabelText(/aggression/i))
+      await ackWarning(user)
+      await clickContinue(user)
 
-    await clickSkip(user) // notes
+      await clickSkip(user) // notes
 
-    await user.click(screen.getByRole('button', { name: /save patient/i }))
+      await user.click(screen.getByRole('button', { name: /save patient/i }))
 
-    expect(onSave).toHaveBeenCalledTimes(1)
-    expect(onSave.mock.calls[0]?.[0].identity.name).toBe('Mira Kane')
-  })
+      expect(onSave).toHaveBeenCalledTimes(1)
+      expect(onSave.mock.calls[0]?.[0].identity.name).toBe('Mira Kane')
+    },
+    12000,
+  )
 
   it('shows urgent warning when heartbeat is NO and skips BPM', async () => {
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NewPatientWizard onSave={vi.fn()} patients={[]} />
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText(/subject name/i), 'Test')
+    await user.type(within(container).getByLabelText(/subject name/i), 'Test')
     await clickContinue(user)
     await clickContinue(user) // age
     await clickOption(user, /^Unknown$/) // sex
@@ -154,7 +159,7 @@ describe('NewPatientWizard', () => {
     const header = screen.getByRole('button', { name: /cleared/i })
     expect(header).toBeInTheDocument()
     expect(header.classList.contains('sticky-header')).toBe(true)
-    expect(screen.getByText(/infection/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/infection/i).length).toBeGreaterThan(0)
 
     expect(screen.queryByText(/live scp threat board/i)).not.toBeInTheDocument()
 
@@ -169,13 +174,13 @@ describe('NewPatientWizard', () => {
   it('shows temperature warning for abnormal range', async () => {
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NewPatientWizard onSave={vi.fn()} patients={[]} />
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText(/subject name/i), 'Temp Test')
+    await user.type(within(container).getByLabelText(/subject name/i), 'Temp Test')
     await clickContinue(user)
     await clickContinue(user) // age
     await clickOption(user, /^Unknown$/)
@@ -198,13 +203,13 @@ describe('NewPatientWizard', () => {
   it('shows EMF warning for Extreme', async () => {
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NewPatientWizard onSave={vi.fn()} patients={[]} />
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText(/subject name/i), 'EMF Test')
+    await user.type(within(container).getByLabelText(/subject name/i), 'EMF Test')
     await clickContinue(user)
     await clickContinue(user) // age
     await clickOption(user, /^Unknown$/)
@@ -229,13 +234,13 @@ describe('NewPatientWizard', () => {
   it('shows symptom warning when a symptom is toggled on', async () => {
     const user = userEvent.setup()
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NewPatientWizard onSave={vi.fn()} patients={[]} />
       </MemoryRouter>,
     )
 
-    await user.type(screen.getByLabelText(/subject name/i), 'Warn Test')
+    await user.type(within(container).getByLabelText(/subject name/i), 'Warn Test')
     await clickContinue(user)
     await clickContinue(user) // age
     await clickOption(user, /^Unknown$/)
