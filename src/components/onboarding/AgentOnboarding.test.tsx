@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
@@ -27,27 +27,30 @@ vi.mock('../../hooks/useToast', () => ({
 }))
 
 describe('AgentOnboarding', () => {
-  it('completes the first-run agent setup wizard', async () => {
-    const user = userEvent.setup()
-    render(
+  it(
+    'completes the first-run agent setup wizard',
+    async () => {
+      const user = userEvent.setup()
+      render(
       <MemoryRouter initialEntries={['/']}>
         <AgentOnboarding />
       </MemoryRouter>,
     )
 
     expect(await screen.findByText(/configure agent profile/i, {}, { timeout: 2500 })).toBeInTheDocument()
+    await screen.findByLabelText(/Agent name/i, {}, { timeout: 6000 })
 
     await user.type(screen.getByLabelText(/Agent name/i), 'Dana Voss')
     await user.type(screen.getByLabelText(/Callsign/i), 'MTF-11')
-    await user.clear(screen.getByLabelText(/Task force unit/i))
-    await user.type(screen.getByLabelText(/Task force unit/i), 'Mobile Task Force Nu-7')
-    await user.clear(screen.getByLabelText(/Clearance level/i))
-    await user.type(screen.getByLabelText(/Clearance level/i), '4')
+    await user.selectOptions(screen.getByLabelText(/Task force unit/i), 'MTF Nu-7 (Hammer Down)')
+    await user.selectOptions(screen.getByLabelText(/Clearance level/i), '4')
     await user.click(screen.getByRole('button', { name: /activate agent profile/i }))
 
-    expect(completeSetup).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(completeSetup).toHaveBeenCalledTimes(1), { timeout: 4000 })
     expect(pushToast).toHaveBeenCalled()
-  })
+    },
+    12000,
+  )
 
   it('renders nothing on badge page so agent wizard does not block public badge view', () => {
     render(

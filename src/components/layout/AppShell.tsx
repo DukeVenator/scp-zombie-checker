@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { Activity, Database, Download, RadioTower, ShieldAlert, UserRoundCog } from 'lucide-react'
+import { Activity, Database, Download, RadioTower, Settings, ShieldAlert, UserRoundCog } from 'lucide-react'
 import { useAgentProfile } from '../../hooks/useAgentProfile'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
 import { useToast } from '../../hooks/useToast'
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: Activity },
   { to: '/new', label: 'New Patient', icon: ShieldAlert },
   { to: '/transfers', label: 'Transfers', icon: Database },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export const AppShell = () => {

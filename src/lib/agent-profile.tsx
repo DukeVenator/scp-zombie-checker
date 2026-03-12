@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { agentProfileSchema, type AgentProfile } from '../types/agent'
 import { AgentStoreContext, type AgentStoreContextValue } from './agent-store-context'
 
-const AGENT_PROFILE_KEY = 'scp-zombie-checker:agent-profile'
+export const AGENT_PROFILE_KEY = 'scp-zombie-checker:agent-profile'
 
 const loadStoredProfile = (): AgentProfile | null => {
   const raw = window.localStorage.getItem(AGENT_PROFILE_KEY)
@@ -51,6 +51,10 @@ export const AgentProfileProvider = ({ children }: { children: ReactNode }) => {
             showSetup: false,
           }))
         }
+      },
+      clearAgentProfile: () => {
+        window.localStorage.removeItem(AGENT_PROFILE_KEY)
+        setState({ profile: null, showSetup: true })
       },
     }),
     [state],

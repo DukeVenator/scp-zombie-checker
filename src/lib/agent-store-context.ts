@@ -8,6 +8,7 @@ export type AgentStoreContextValue = {
   completeSetup: (profile: AgentProfile) => void
   openSetup: () => void
   closeSetup: () => void
+  clearAgentProfile: () => void
 }
 
 export const AgentStoreContext = createContext<AgentStoreContextValue | null>(null)

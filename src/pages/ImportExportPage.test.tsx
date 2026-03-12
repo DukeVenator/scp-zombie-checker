@@ -52,7 +52,7 @@ vi.mock('../hooks/useAgentProfile', () => ({
     profile: {
       agentName: 'Dana Voss',
       callsign: 'MTF-11',
-      taskForceUnit: 'Mobile Task Force Nu-7',
+      taskForceUnit: 'MTF Nu-7 (Hammer Down)',
       clearanceLevel: '4',
     },
     openSetup: vi.fn(),

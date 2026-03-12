@@ -1,6 +1,6 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { ArrowRightLeft, Download, QrCode, Upload } from 'lucide-react'
+import { ArrowRightLeft, Download, Maximize2, QrCode, Upload, X } from 'lucide-react'
 import { buildExportPayload, downloadJson, exportFileName, safeParseImportPayload } from '../lib/export'
 import { buildQrPayload, parseQrPayload } from '../lib/qr'
 import { useAgentProfile } from '../hooks/useAgentProfile'
@@ -30,7 +30,18 @@ export const ImportExportPage = () => {
   const [selectedPatientId, setSelectedPatientId] = useState('')
   const [qrImportValue, setQrImportValue] = useState('')
   const [scanEnabled, setScanEnabled] = useState(false)
+  const [qrFullscreen, setQrFullscreen] = useState(false)
   const [importSession, setImportSession] = useState<ImportSession | null>(null)
+
+  const exitQrFullscreen = useCallback(() => setQrFullscreen(false), [])
+  useEffect(() => {
+    if (!qrFullscreen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') exitQrFullscreen()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [qrFullscreen, exitQrFullscreen])
 
   const selectedPatient = useMemo(
     () => patients.find((patient) => patient.id === selectedPatientId) ?? patients[0],
@@ -133,7 +144,24 @@ export const ImportExportPage = () => {
   }
 
   return (
-    <div className="page-stack">
+    <>
+      {qrFullscreen && qrValue && !qrValue.startsWith('This patient record is too large') && (
+        <div className="qr-fullscreen-overlay" role="dialog" aria-modal="true" aria-label="QR code fullscreen">
+          <button
+            type="button"
+            className="qr-fullscreen-exit"
+            onClick={exitQrFullscreen}
+            aria-label="Exit fullscreen"
+          >
+            <X size={20} />
+            Exit
+          </button>
+          <div className="qr-fullscreen-code">
+            <QRCodeSVG includeMargin value={qrValue} size={320} />
+          </div>
+        </div>
+      )}
+      <div className="page-stack">
       <section className="content-grid">
         <div className="page-stack">
           <article className="panel">
@@ -353,6 +381,14 @@ export const ImportExportPage = () => {
                     <p className="muted">
                       QR export is intentionally compact and does not include patient photos.
                     </p>
+                    <button
+                      className="secondary-button qr-fullscreen-btn"
+                      onClick={() => setQrFullscreen(true)}
+                      type="button"
+                    >
+                      <Maximize2 size={16} />
+                      Fullscreen
+                    </button>
                   </div>
                 ) : (
                   <p className="muted">{qrValue || 'Select a patient to generate a QR transfer payload.'}</p>
@@ -429,5 +465,6 @@ export const ImportExportPage = () => {
         </aside>
       </section>
     </div>
+    </>
   )
 }

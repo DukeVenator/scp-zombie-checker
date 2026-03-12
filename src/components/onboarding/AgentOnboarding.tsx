@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Shield, UserRoundCog } from 'lucide-react'
+import { Lock, Shield, ShieldCheck, UserRoundCog } from 'lucide-react'
 import { useAgentProfile } from '../../hooks/useAgentProfile'
 import { useToast } from '../../hooks/useToast'
-import { agentProfileSchema, defaultAgentProfile, profileToReportingAgent, type AgentProfile } from '../../types/agent'
+import {
+  agentProfileSchema,
+  CLEARANCE_LEVEL_OPTIONS,
+  defaultAgentProfile,
+  profileToReportingAgent,
+  TASK_FORCE_UNIT_OPTIONS,
+  type AgentProfile,
+} from '../../types/agent'
 
 const bootMessages = [
   'Initializing secure intake console',
@@ -15,9 +22,14 @@ export const AgentOnboarding = () => {
   const location = useLocation()
   const { profile, showSetup, completeSetup, closeSetup, isReady } = useAgentProfile()
   const { pushToast } = useToast()
+  const [intro, setIntro] = useState(() => !profile)
   const [booting, setBooting] = useState(() => !profile)
+  const [unlocking, setUnlocking] = useState(false)
+  const [unlockPhase, setUnlockPhase] = useState<'connect' | 'verified'>('connect')
   const [form, setForm] = useState<AgentProfile>(profile ?? defaultAgentProfile())
   const [error, setError] = useState('')
+  const unlockTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const pendingProfileRef = useRef<AgentProfile | null>(null)
 
   const isBadgePage = location.pathname === '/badge' || location.pathname === 'badge' || location.pathname.endsWith('/badge')
 
@@ -25,10 +37,22 @@ export const AgentOnboarding = () => {
     if (!showSetup || profile) {
       return
     }
-
-    const timeoutId = window.setTimeout(() => setBooting(false), 1800)
-    return () => window.clearTimeout(timeoutId)
+    const introDurationMs = 1100
+    const bootDurationMs = 2400
+    const t1 = window.setTimeout(() => setIntro(false), introDurationMs)
+    const t2 = window.setTimeout(() => setBooting(false), introDurationMs + bootDurationMs)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
   }, [profile, showSetup])
+
+  useEffect(() => {
+    return () => {
+      unlockTimeoutsRef.current.forEach(clearTimeout)
+      unlockTimeoutsRef.current = []
+    }
+  }, [])
 
   const bootMessage = bootMessages[1]
 
@@ -42,20 +66,57 @@ export const AgentOnboarding = () => {
       setError(parsed.error.issues[0]?.message ?? 'Agent profile is incomplete.')
       return
     }
-
-    completeSetup(parsed.data)
     setError('')
-    setForm(parsed.data)
-    pushToast({
-      title: 'Agent profile loaded',
-      description: `${parsed.data.callsign} is now the active reporting agent.`,
-      tone: 'success',
-    })
+    pendingProfileRef.current = parsed.data
+    setUnlocking(true)
+    setUnlockPhase('connect')
+    const t1 = window.setTimeout(() => setUnlockPhase('verified'), 450)
+    const t2 = window.setTimeout(() => {
+      const profileData = pendingProfileRef.current
+      pendingProfileRef.current = null
+      if (profileData) {
+        completeSetup(profileData)
+        setForm(profileData)
+        pushToast({
+          title: 'Agent profile loaded',
+          description: `${profileData.callsign} is now the active reporting agent.`,
+          tone: 'success',
+        })
+      }
+      setUnlocking(false)
+    }, 1300)
+    unlockTimeoutsRef.current = [t1, t2]
   }
 
   return (
     <div className="onboarding-overlay">
-      <div className={`onboarding-shell ${booting ? 'is-booting' : 'is-ready'}`}>
+      {intro && (
+        <div className="onboarding-intro" aria-live="polite">
+          <div className="onboarding-intro__lock">
+            <Shield size={64} strokeWidth={1.5} />
+          </div>
+          <p className="onboarding-intro__title">CONFIGURE AGENT PROFILE</p>
+          <p className="onboarding-intro__sub">Authorization required — secure intake node</p>
+        </div>
+      )}
+      {unlocking && (
+        <div className="unlock-overlay" aria-live="polite">
+          <div className="unlock-modal" data-phase={unlockPhase}>
+            <div className="unlock-modal__icon-wrap">
+              {unlockPhase === 'connect' ? (
+                <Lock size={48} strokeWidth={1.8} className="unlock-modal__icon" aria-hidden />
+              ) : (
+                <ShieldCheck size={48} strokeWidth={1.8} className="unlock-modal__icon unlock-modal__icon--verified" aria-hidden />
+              )}
+            </div>
+            <p className="unlock-modal__line">{unlockPhase === 'connect' ? 'CONNECTING…' : 'AUTHENTICATED'}</p>
+            <p className="unlock-modal__line unlock-modal__line--highlight">
+              {unlockPhase === 'verified' ? 'CLEARANCE VERIFIED' : '…'}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className={`onboarding-shell ${intro ? 'onboarding-shell--intro' : ''} ${booting ? 'is-booting' : 'is-ready'} ${unlocking ? 'onboarding-shell--unlocking' : ''}`}>
         <div className="onboarding-brand">
           <div className="onboarding-seal">
             <Shield size={40} />
@@ -103,19 +164,33 @@ export const AgentOnboarding = () => {
                   onChange={(event) => setForm((current) => ({ ...current, callsign: event.target.value }))}
                 />
               </label>
-              <label>
+              <label htmlFor="agent-task-force-unit">
                 Task force unit
-                <input
+                <select
+                  id="agent-task-force-unit"
                   value={form.taskForceUnit}
                   onChange={(event) => setForm((current) => ({ ...current, taskForceUnit: event.target.value }))}
-                />
+                >
+                  {TASK_FORCE_UNIT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </label>
-              <label>
+              <label htmlFor="agent-clearance-level">
                 Clearance level
-                <input
+                <select
+                  id="agent-clearance-level"
                   value={form.clearanceLevel}
                   onChange={(event) => setForm((current) => ({ ...current, clearanceLevel: event.target.value }))}
-                />
+                >
+                  {CLEARANCE_LEVEL_OPTIONS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

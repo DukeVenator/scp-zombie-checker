@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { Shield, ShieldAlert, RefreshCw } from 'lucide-react'
@@ -12,10 +12,38 @@ import {
 } from '../lib/badge-copy'
 import { usePatientStore } from '../hooks/usePatientStore'
 
+const HIGH_THREAT_CONTAINMENT = ['Escaped', 'Known Threat']
+const HIGH_THREAT_VARIANT = ['Alpha', 'Gate Breaker']
+
+function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared' {
+  if (
+    payload.status === 'Critical' ||
+    payload.infectionPct >= 70 ||
+    (payload.containment && HIGH_THREAT_CONTAINMENT.includes(payload.containment)) ||
+    (payload.variant && HIGH_THREAT_VARIANT.includes(payload.variant)) ||
+    payload.threatLevel === 'Critical'
+  ) {
+    return 'critical'
+  }
+  if (
+    ['Suspected', 'Contained', 'Observation'].includes(payload.status) ||
+    (payload.infectionPct >= 40 && payload.infectionPct < 70)
+  ) {
+    return 'warning'
+  }
+  return 'cleared'
+}
+
 function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: string }) {
   const navigate = useNavigate()
   const { patients } = usePatientStore()
   const inStore = useMemo(() => patients.some((p) => p.id === payload.id), [patients, payload.id])
+  const severity = useMemo(() => badgeSeverity(payload), [payload])
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntered(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const updatedAtFormatted = payload.updatedAt
     ? new Date(payload.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -29,15 +57,15 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
   const symptomJoke = !isClearedNormal && payload.infectionPct >= 50 ? getSymptomDarkJoke(payload.id) : null
 
   return (
-    <div className="badge-page">
+    <div className={`badge-page ${entered ? 'badge-page--entered' : ''}`} data-severity={severity}>
       <div className="badge-doc" role="document">
-        <div className="badge-doc__stripe">
+        <div className="badge-doc__stripe badge-doc__stripe--entry">
           <Shield size={20} />
           <span>SCP FIELD INTAKE — SUBJECT CHECK</span>
           <Shield size={20} />
         </div>
 
-        <header className="badge-doc__header">
+        <header className="badge-doc__header badge-doc__header--entry">
           <div className="badge-doc__logo">
             <ShieldAlert size={28} />
             <span>ZOMBIE CHECKER</span>
@@ -45,7 +73,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
           <div className="badge-doc__doc-id">DOC #{payload.id.slice(0, 8).toUpperCase()}</div>
         </header>
 
-        <div className="badge-doc__body">
+        <div className="badge-doc__body badge-doc__body--entry">
           <div className="badge-doc__row badge-doc__row--main">
             <div className="badge-doc__col badge-doc__col--info">
               <h1 className="badge-doc__name">{payload.name}</h1>

@@ -7,7 +7,7 @@ const seedAgentProfile = async (page: Page) => {
       JSON.stringify({
         agentName: 'Dana Voss',
         callsign: 'MTF-11',
-        taskForceUnit: 'Mobile Task Force Nu-7',
+        taskForceUnit: 'MTF Nu-7 (Hammer Down)',
         clearanceLevel: '4',
       }),
     )
@@ -26,8 +26,8 @@ test('first run agent onboarding can activate a local agent profile', async ({ p
 
   await page.getByLabel('Agent name').fill('Dana Voss')
   await page.getByLabel('Callsign').fill('MTF-11')
-  await page.getByLabel('Task force unit').fill('Mobile Task Force Nu-7')
-  await page.getByLabel('Clearance level').fill('4')
+  await page.getByLabel('Task force unit').selectOption('MTF Nu-7 (Hammer Down)')
+  await page.getByLabel('Clearance level').selectOption('4')
   await page.getByRole('button', { name: /activate agent profile/i }).click()
 
   await expect(page.getByText(/active agent MTF-11/i)).toBeVisible()

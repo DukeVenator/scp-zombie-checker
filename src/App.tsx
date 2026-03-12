@@ -2,6 +2,8 @@ import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AgentOnboarding } from './components/onboarding/AgentOnboarding'
+import { StartupAnimation } from './components/StartupAnimation'
+import { WelcomeBackUnlock } from './components/WelcomeBackUnlock'
 import { ErrorBoundary } from './components/ErrorBoundary'
 
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })))
@@ -14,12 +16,17 @@ const PatientDetailPage = lazy(() =>
 const ImportExportPage = lazy(() =>
   import('./pages/ImportExportPage').then((module) => ({ default: module.ImportExportPage })),
 )
+const SettingsPage = lazy(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+)
 
 function App() {
   return (
     <ErrorBoundary section="SCP Zombie Checker">
       <Suspense fallback={<div className="panel">Loading interface...</div>}>
         <>
+          <StartupAnimation />
+          <WelcomeBackUnlock />
           <Routes>
             <Route
               path="/badge"
@@ -61,6 +68,14 @@ function App() {
                   </ErrorBoundary>
                 }
                 path="transfers"
+              />
+              <Route
+                element={
+                  <ErrorBoundary section="Settings">
+                    <SettingsPage />
+                  </ErrorBoundary>
+                }
+                path="settings"
               />
               <Route element={<Navigate replace to="/" />} path="*" />
             </Route>
