@@ -18,6 +18,7 @@ export const WelcomeBackUnlock = () => {
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState<'welcome' | 'verified'>('welcome')
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const hasShownWelcomeThisLoadRef = useRef(false)
 
   useEffect(() => {
     if (!profile || showSetup || isBadgePage(location.pathname)) {
@@ -25,6 +26,8 @@ export const WelcomeBackUnlock = () => {
     }
 
     const runWelcome = () => {
+      if (hasShownWelcomeThisLoadRef.current) return
+      hasShownWelcomeThisLoadRef.current = true
       timeoutsRef.current.forEach(clearTimeout)
       timeoutsRef.current = []
       setVisible(true)

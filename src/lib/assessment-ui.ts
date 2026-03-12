@@ -38,6 +38,25 @@ export const getThreatLevel = (classification: ClassificationResult) => {
   return 'Low'
 }
 
+/** SCP Object Class for print document: Safe / Euclid / Keter */
+export const getObjectClass = (
+  classification: ClassificationResult,
+  containmentStatus?: ContainmentStatus | null
+): string => {
+  if (containmentStatus === 'Escaped' || classification.status === 'Critical' || classification.riskScore >= 8) {
+    return 'Keter'
+  }
+  if (
+    containmentStatus === 'Threat' ||
+    containmentStatus === 'Known Threat' ||
+    classification.status === 'Contained' ||
+    classification.riskScore >= 5
+  ) {
+    return 'Euclid'
+  }
+  return 'Safe'
+}
+
 export type AssessmentDirective = {
   id: string
   title: string

@@ -14,6 +14,7 @@ import {
   buildAssessmentDirectives,
   calculateInfectionProbability,
   containmentProcedures,
+  getObjectClass,
   getTempRangeForValue,
   getThreatLevel,
   isHighAlertClassification,
@@ -152,6 +153,21 @@ export const PatientDetailPage = () => {
   const containment = patient.containmentStatus ?? 'Normal'
   const variant = patient.variant ?? 'Normal'
   const terminateOnSight = infectionPct >= 81
+
+  /* Print document fields (SCP dossier style) */
+  const printItemNumber = `SCP-${patient.id.slice(0, 8).toUpperCase()}`
+  const printObjectClass = getObjectClass(classification, patient.containmentStatus ?? undefined)
+  const printClearanceLevel = '2'
+  const printContainmentProc = containment !== 'Normal' && containmentProcedures[containment]
+    ? containmentProcedures[containment]
+    : null
+  const printContainmentParagraph = printContainmentProc
+    ? printContainmentProc.detail
+    : 'Standard observation protocols apply. Subject is under routine monitoring.'
+  const printContainmentSteps = printContainmentProc?.steps ?? []
+  const printAddendumHighlight = terminateOnSight
+    ? 'Subject is designated for termination on sight. Lethal force is authorized.'
+    : null
 
   const statusColorClass = (() => {
     if (terminateOnSight) return 'is-terminate'
@@ -796,9 +812,9 @@ export const PatientDetailPage = () => {
         </div>
       </section>
 
-      {/* SCP print card — hidden on screen, shown only when printing */}
-      <div className="scp-print-card" aria-hidden="true">
-        <div className="scp-print-card__border">
+      {/* SCP print card — hidden on screen, shown only when printing (dossier style) */}
+      <div className="scp-print-card" aria-hidden="true" data-testid="scp-print-card">
+        <div className="scp-print-card__border" data-testid="scp-print-card-border">
           {terminateOnSight && (
             <div className="scp-print__terminate">
               TERMINATE ON SIGHT — INFECTION {infectionPct}%
@@ -807,154 +823,85 @@ export const PatientDetailPage = () => {
 
           <header className="scp-print__header">
             <div className="scp-print__logo-block">
-              <div className="scp-print__logo">SCP</div>
+              <div className="scp-print__logo-text">SCP</div>
               <div className="scp-print__org">
-                <span>SECURE. CONTAIN. PROTECT.</span>
-                <span>Zombie Classification Division</span>
+                <span>Secure. Contain. Protect.</span>
               </div>
+              <img src="/icons/scp-icon.svg" alt="" className="scp-print__logo-img" />
             </div>
-            <div className="scp-print__doc-id">
-              <span>DOCUMENT CLASS: CLASSIFIED</span>
-              <span>FILE #{patient.id.slice(0, 8).toUpperCase()}</span>
-            </div>
+            <dl className="scp-print__meta">
+              <div className="scp-print__meta-row"><dt>Clearance Level</dt><dd data-testid="scp-print-clearance">{printClearanceLevel}</dd></div>
+              <div className="scp-print__meta-row"><dt>Item #</dt><dd data-testid="scp-print-item-number">{printItemNumber}</dd></div>
+              <div className="scp-print__meta-row"><dt>Object Class</dt><dd data-testid="scp-print-object-class">{printObjectClass}</dd></div>
+            </dl>
           </header>
 
-          <div className="scp-print__stripe">
-            <span>CLASSIFICATION: {classification.status.toUpperCase()}</span>
-            <span>THREAT: {threatLevel.toUpperCase()}</span>
-            <span>RISK: {classification.riskScore}</span>
-            <span>INFECTION: {infectionPct}%</span>
-          </div>
-
           <div className="scp-print__body">
-            <div className="scp-print__col-left">
-              {patient.photo.dataUrl && (
-                <div className="scp-print__photo-frame">
-                  <img src={patient.photo.dataUrl} alt={patient.identity.name} />
-                </div>
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Special Containment Procedures:</h3>
+              <p className="scp-print__paragraph">{printContainmentParagraph}</p>
+              {printContainmentSteps.length > 0 && (
+                <ul className="scp-print__dash-list">
+                  {printContainmentSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
               )}
-              <table className="scp-print__identity-table">
-                <tbody>
-                  <tr><th>Subject</th><td>{patient.identity.name}</td></tr>
-                  <tr><th>Age</th><td>{patient.identity.age}</td></tr>
-                  <tr><th>Sex</th><td>{patient.identity.sex}</td></tr>
-                  {patient.identity.hairColor && <tr><th>Hair</th><td>{patient.identity.hairColor}</td></tr>}
-                  {patient.identity.eyeColor && <tr><th>Eyes</th><td>{patient.identity.eyeColor}</td></tr>}
-                  {patient.identity.skinPigmentation && <tr><th>Skin</th><td>{patient.identity.skinPigmentation}</td></tr>}
-                </tbody>
-              </table>
-            </div>
+            </section>
 
-            <div className="scp-print__col-right">
-              <h3 className="scp-print__section-title">BIOMETRIC READINGS</h3>
-              <table className="scp-print__data-table">
-                <tbody>
-                  <tr>
-                    <th>Pupils</th>
-                    <td>{patient.checklist.pupilState}</td>
-                  </tr>
-                  <tr>
-                    <th>Temperature</th>
-                    <td>
-                      {patient.checklist.temperatureC.toFixed(1)}°C
-                      {(() => { const r = getTempRangeForValue(patient.checklist.temperatureC); return r ? ` (${r.label})` : '' })()}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>Heartbeat</th>
-                    <td>
-                      {patient.checklist.heartbeatDetected
-                        ? `Detected — ${patient.checklist.heartbeatBpm} BPM`
-                        : 'NOT DETECTED'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <th>EMF Level</th>
-                    <td>{patient.checklist.emfLevel}</td>
-                  </tr>
-                  <tr>
-                    <th>Containment</th>
-                    <td>{containment}</td>
-                  </tr>
-                  <tr>
-                    <th>Variant</th>
-                    <td>{variant}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Description:</h3>
+              <p className="scp-print__paragraph">{classification.summary}</p>
+              <p className="scp-print__subject-id">
+                Subject: {patient.identity.name}, {patient.identity.age}, {patient.identity.sex}.
+                Biometrics: pupils {patient.checklist.pupilState}; temperature {patient.checklist.temperatureC.toFixed(1)}°C;
+                heartbeat {patient.checklist.heartbeatDetected ? `${patient.checklist.heartbeatBpm} BPM` : 'not detected'};
+                EMF {patient.checklist.emfLevel}. Containment: {containment}. Variant: {variant}.
+              </p>
+            </section>
 
-              <h3 className="scp-print__section-title">OBSERVED SYMPTOMS</h3>
-              <ul className="scp-print__symptom-list">
-                {Object.entries(patient.checklist.symptoms).map(([key, active]) => (
-                  <li key={key} className={active ? 'is-active' : ''}>
-                    <span className="scp-print__check">{active ? '■' : '□'}</span>
-                    {key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase())}
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Symptoms of infection with {printItemNumber} include:</h3>
+              <ul className="scp-print__dash-list">
+                {Object.entries(patient.checklist.symptoms).map(([key, active]) => {
+                  const label = (symptomLabels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()))
+                  return (
+                    <li key={key} className={active ? 'is-active' : ''}>
+                      {active ? label : `${label} (not observed)`}
+                    </li>
+                  )
+                })}
+                {infectionPct >= 70 && (
+                  <li>
+                    <span className="scp-print__highlight">Subject will attempt to ingest living humans if physical contact is made.</span>
                   </li>
-                ))}
+                )}
               </ul>
+            </section>
 
-              {patient.checklist.notes && (
-                <>
-                  <h3 className="scp-print__section-title">FIELD NOTES</h3>
-                  <p className="scp-print__notes">{patient.checklist.notes}</p>
-                </>
-              )}
-            </div>
+            {patient.checklist.notes && (
+              <section className="scp-print__section">
+                <h3 className="scp-print__section-title">Field notes:</h3>
+                <p className="scp-print__paragraph scp-print__notes">{patient.checklist.notes}</p>
+              </section>
+            )}
+
+            {printAddendumHighlight && (
+              <section className="scp-print__section">
+                <h3 className="scp-print__section-title">Addendum:</h3>
+                <p className="scp-print__paragraph"><span className="scp-print__highlight">{printAddendumHighlight}</span></p>
+              </section>
+            )}
           </div>
-
-          <div className="scp-print__infection-bar-wrapper">
-            <div className="scp-print__infection-bar">
-              <div className="scp-print__infection-fill" style={{ width: `${infectionPct}%` }} />
-            </div>
-            <span>ZOMBIE INFECTION PROBABILITY: {infectionPct}%</span>
-          </div>
-
-          {classification.warnings.length > 0 && (
-            <div className="scp-print__warnings">
-              <h3 className="scp-print__section-title">ACTIVE WARNINGS</h3>
-              {classification.warnings.map((w) => (
-                <div key={w.id} className="scp-print__warning-item">
-                  <strong>[{w.severity.toUpperCase()}] {w.title}</strong>
-                  <p>{w.detail}</p>
-                  <p className="scp-print__action">ACTION: {w.action}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {directives.length > 0 && (
-            <div className="scp-print__directives">
-              <h3 className="scp-print__section-title">SCP TASK FORCE DIRECTIVES</h3>
-              <ol>
-                {directives.map((d) => (
-                  <li key={d.id}>
-                    <strong>{d.title}</strong>
-                    <p>{d.detail}</p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          {noPulse && (
-            <div className="scp-print__stamp scp-print__stamp--zombie">
-              POTENTIAL ZOMBIE
-            </div>
-          )}
-
-          {terminateOnSight && (
-            <div className="scp-print__stamp scp-print__stamp--terminate">
-              TERMINATE ON SIGHT
-            </div>
-          )}
 
           <footer className="scp-print__footer">
-            <div>
-              <span>Reporting agent: {updatedBy.callsign} / {updatedBy.agentName}</span>
-              <span>Unit: {updatedBy.taskForceUnit}</span>
+            <img src="/icons/scp-icon.svg" alt="" className="scp-print__footer-logo" />
+            <div className="scp-print__footer-center">
+              <div className="scp-print__footer-confidential">CONFIDENTIAL!</div>
+              <p className="scp-print__footer-disclaimer">This document may not be shared with or used by personnel below the designated clearance level.</p>
             </div>
-            <div>
-              <span>Classification: {classification.summary}</span>
+            <div className="scp-print__footer-meta">
+              <span>Reporting agent: {updatedBy.callsign} / {updatedBy.agentName}</span>
               <span>Printed: {new Date().toLocaleString()}</span>
             </div>
           </footer>
