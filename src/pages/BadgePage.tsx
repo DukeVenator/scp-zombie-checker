@@ -72,18 +72,21 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     return () => cancelAnimationFrame(id)
   }, [loading])
 
-  /* Unlock overlay for all severities: lock → verified, then hide */
+  /* Unlock overlay for all severities: lock → verified, then hide (defer setState to avoid sync update in effect) */
   useEffect(() => {
     if (loading) return
     const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    setUnlockVisible(true)
-    setUnlockPhase('lock')
+    const id = requestAnimationFrame(() => {
+      setUnlockVisible(true)
+      setUnlockPhase('lock')
+    })
     const t1 = window.setTimeout(() => setUnlockPhase('verified'), reduceMotion ? 80 : UNLOCK_PHASE_VERIFIED_MS)
     const t2 = window.setTimeout(
       () => setUnlockVisible(false),
       reduceMotion ? 400 : UNLOCK_DURATION_MS,
     )
     return () => {
+      cancelAnimationFrame(id)
       window.clearTimeout(t1)
       window.clearTimeout(t2)
     }
@@ -115,12 +118,14 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     <div
       className={`badge-page badge-page--severity-${severity} ${entered ? 'badge-page--entered' : ''} ${statusClear ? 'badge-page--status-clear' : ''}`}
       data-severity={severity}
+      data-testid="badge-page"
     >
       {unlockVisible && (
         <div
           className={`badge-unlock-overlay badge-unlock-overlay--${severity}`}
           aria-live="polite"
           aria-label={severity === 'cleared' ? 'Status clear verified' : severity === 'warning' ? 'Elevated risk verified' : 'High threat verified'}
+          data-testid="badge-unlock-overlay"
         >
           <div className="badge-unlock-overlay__modal" data-phase={unlockPhase}>
             <div className="badge-unlock-overlay__icon-wrap">
@@ -174,14 +179,15 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
       <div
         className={`badge-doc badge-doc--unlocking badge-doc--unlocking-${severity}`}
         role="document"
+        data-testid="badge-doc"
       >
-        <div className="badge-doc__stripe badge-doc__stripe--entry">
+        <div className="badge-doc__stripe badge-doc__stripe--entry" data-testid="badge-doc-stripe">
           <Shield size={20} />
           <span>SCP FIELD INTAKE — SUBJECT CHECK</span>
           <Shield size={20} />
         </div>
 
-        <header className="badge-doc__header badge-doc__header--entry">
+        <header className="badge-doc__header badge-doc__header--entry" data-testid="badge-doc-header">
           <div className="badge-doc__logo">
             <ShieldAlert size={28} />
             <span>ZOMBIE CHECKER</span>
@@ -189,7 +195,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
           <div className="badge-doc__doc-id">DOC #{payload.id.slice(0, 8).toUpperCase()}</div>
         </header>
 
-        <div className="badge-doc__body badge-doc__body--entry">
+        <div className="badge-doc__body badge-doc__body--entry" data-testid="badge-doc-body">
           <div className="badge-doc__row badge-doc__row--main">
             <div className="badge-doc__col badge-doc__col--info">
               <h1 className="badge-doc__name">{payload.name}</h1>

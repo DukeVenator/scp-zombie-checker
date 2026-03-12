@@ -82,10 +82,9 @@ describe('BadgePage', () => {
     )
 
     await waitFor(() => {
-      const page = document.querySelector('.badge-page')
-      expect(page).toHaveAttribute('data-severity', 'cleared')
-      expect(page).toHaveClass(/badge-page--severity-cleared/)
+      expect(screen.getByTestId('badge-page')).toHaveAttribute('data-severity', 'cleared')
     })
+    expect(screen.getByTestId('badge-page')).toHaveClass(/badge-page--severity-cleared/)
 
     expect(screen.getByRole('heading', { name: 'Unit Test Subject' })).toBeInTheDocument()
     expect(screen.getByText(/SCP FIELD INTAKE/i)).toBeInTheDocument()
@@ -99,11 +98,11 @@ describe('BadgePage', () => {
 
     await waitFor(
       () => {
-        expect(document.querySelector('.badge-page')).toHaveAttribute('data-severity', 'warning')
-        expect(document.querySelector('.badge-page')).toHaveClass(/badge-page--severity-warning/)
+        expect(screen.getByTestId('badge-page')).toHaveAttribute('data-severity', 'warning')
       },
       { timeout: 2000 },
     )
+    expect(screen.getByTestId('badge-page')).toHaveClass(/badge-page--severity-warning/)
   })
 
   it('applies critical severity for high-threat payload', async () => {
@@ -120,11 +119,11 @@ describe('BadgePage', () => {
 
     await waitFor(
       () => {
-        expect(document.querySelector('.badge-page')).toHaveAttribute('data-severity', 'critical')
-        expect(document.querySelector('.badge-page')).toHaveClass(/badge-page--severity-critical/)
+        expect(screen.getByTestId('badge-page')).toHaveAttribute('data-severity', 'critical')
       },
       { timeout: 2000 },
     )
+    expect(screen.getByTestId('badge-page')).toHaveClass(/badge-page--severity-critical/)
   })
 
   it('shows unlock overlay then doc with unlocking class', async () => {
@@ -133,18 +132,18 @@ describe('BadgePage', () => {
 
     await waitFor(
       () => {
-        expect(document.querySelector('.badge-unlock-overlay')).toBeInTheDocument()
+        expect(screen.getByTestId('badge-unlock-overlay')).toBeInTheDocument()
       },
       { timeout: 1500 },
     )
 
     await waitFor(
       () => {
-        expect(document.querySelector('.badge-unlock-overlay.badge-unlock-overlay--cleared')).toBeInTheDocument()
-        expect(document.querySelector('.badge-doc.badge-doc--unlocking-cleared')).toBeInTheDocument()
+        expect(screen.getByTestId('badge-unlock-overlay')).toHaveClass(/badge-unlock-overlay--cleared/)
       },
       { timeout: 1500 },
     )
+    expect(screen.getByTestId('badge-doc')).toHaveClass(/badge-doc--unlocking-cleared/)
   })
 
   it('renders entry animation classes on stripe, header, body', async () => {
@@ -153,11 +152,11 @@ describe('BadgePage', () => {
 
     await waitFor(
       () => {
-        expect(document.querySelector('.badge-doc__stripe--entry')).toBeInTheDocument()
-        expect(document.querySelector('.badge-doc__header--entry')).toBeInTheDocument()
-        expect(document.querySelector('.badge-doc__body--entry')).toBeInTheDocument()
+        expect(screen.getByTestId('badge-doc-stripe')).toHaveClass('badge-doc__stripe--entry')
       },
       { timeout: 2000 },
     )
+    expect(screen.getByTestId('badge-doc-header')).toHaveClass('badge-doc__header--entry')
+    expect(screen.getByTestId('badge-doc-body')).toHaveClass('badge-doc__body--entry')
   })
 })
