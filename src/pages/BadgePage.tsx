@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Shield, ShieldAlert, RefreshCw } from 'lucide-react'
+import { Shield, ShieldAlert, ShieldCheck, Lock, RefreshCw, AlertTriangle, AlertOctagon } from 'lucide-react'
 import { decodeBadgePayload, getBadgeUrl, type BadgePayload } from '../lib/badge'
 import {
   getClearedCongrats,
@@ -34,16 +34,60 @@ function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared
   return 'cleared'
 }
 
+const LOADING_MS = 500
+const UNLOCK_DURATION_MS = 2200
+const UNLOCK_PHASE_VERIFIED_MS = 480
+
+/** Low risk: Cleared status and below 20% infection */
+function isStatusClear(payload: BadgePayload): boolean {
+  return (
+    payload.status === 'Cleared' &&
+    payload.infectionPct < 20 &&
+    (payload.containment === 'Normal' || !payload.containment) &&
+    (payload.variant === 'Normal' || !payload.variant)
+  )
+}
+
 function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: string }) {
   const navigate = useNavigate()
   const { patients } = usePatientStore()
   const inStore = useMemo(() => patients.some((p) => p.id === payload.id), [patients, payload.id])
   const severity = useMemo(() => badgeSeverity(payload), [payload])
+  const statusClear = useMemo(() => isStatusClear(payload), [payload])
+  const [loading, setLoading] = useState(true)
   const [entered, setEntered] = useState(false)
+  const [unlockVisible, setUnlockVisible] = useState(false)
+  const [unlockPhase, setUnlockPhase] = useState<'lock' | 'verified'>('lock')
+
   useEffect(() => {
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const delay = reduceMotion ? 0 : LOADING_MS
+    const t = setTimeout(() => setLoading(false), delay)
+    return () => clearTimeout(t)
+  }, [])
+
+  useEffect(() => {
+    if (loading) return
     const id = requestAnimationFrame(() => setEntered(true))
     return () => cancelAnimationFrame(id)
-  }, [])
+  }, [loading])
+
+  /* Unlock overlay for all severities: lock → verified, then hide */
+  useEffect(() => {
+    if (loading) return
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    setUnlockVisible(true)
+    setUnlockPhase('lock')
+    const t1 = window.setTimeout(() => setUnlockPhase('verified'), reduceMotion ? 80 : UNLOCK_PHASE_VERIFIED_MS)
+    const t2 = window.setTimeout(
+      () => setUnlockVisible(false),
+      reduceMotion ? 400 : UNLOCK_DURATION_MS,
+    )
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [loading])
 
   const updatedAtFormatted = payload.updatedAt
     ? new Date(payload.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
@@ -56,9 +100,81 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
   const statusHumor = getStatusHumor(payload.status)
   const symptomJoke = !isClearedNormal && payload.infectionPct >= 50 ? getSymptomDarkJoke(payload.id) : null
 
+  if (loading) {
+    return (
+      <div className={`badge-page badge-page--entered badge-page--severity-${severity}`} data-severity={severity}>
+        <div className="badge-page__loading">
+          <Shield size={32} className="badge-page__loading-icon" aria-hidden />
+          <span>Loading document…</span>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className={`badge-page ${entered ? 'badge-page--entered' : ''}`} data-severity={severity}>
-      <div className="badge-doc" role="document">
+    <div
+      className={`badge-page badge-page--severity-${severity} ${entered ? 'badge-page--entered' : ''} ${statusClear ? 'badge-page--status-clear' : ''}`}
+      data-severity={severity}
+    >
+      {unlockVisible && (
+        <div
+          className={`badge-unlock-overlay badge-unlock-overlay--${severity}`}
+          aria-live="polite"
+          aria-label={severity === 'cleared' ? 'Status clear verified' : severity === 'warning' ? 'Elevated risk verified' : 'High threat verified'}
+        >
+          <div className="badge-unlock-overlay__modal" data-phase={unlockPhase}>
+            <div className="badge-unlock-overlay__icon-wrap">
+              {unlockPhase === 'lock' ? (
+                <Lock size={48} strokeWidth={1.8} className="badge-unlock-overlay__icon" aria-hidden />
+              ) : severity === 'cleared' ? (
+                <ShieldCheck
+                  size={48}
+                  strokeWidth={1.8}
+                  className="badge-unlock-overlay__icon badge-unlock-overlay__icon--verified"
+                  aria-hidden
+                />
+              ) : severity === 'warning' ? (
+                <AlertTriangle
+                  size={48}
+                  strokeWidth={1.8}
+                  className="badge-unlock-overlay__icon badge-unlock-overlay__icon--verified"
+                  aria-hidden
+                />
+              ) : (
+                <AlertOctagon
+                  size={48}
+                  strokeWidth={1.8}
+                  className="badge-unlock-overlay__icon badge-unlock-overlay__icon--verified"
+                  aria-hidden
+                />
+              )}
+            </div>
+            <p className="badge-unlock-overlay__line">
+              {unlockPhase === 'lock'
+                ? 'VERIFYING…'
+                : severity === 'cleared'
+                  ? 'STATUS CLEAR'
+                  : severity === 'warning'
+                    ? 'ELEVATED RISK'
+                    : 'HIGH THREAT'}
+            </p>
+            <p className="badge-unlock-overlay__line badge-unlock-overlay__line--highlight">
+              {unlockPhase === 'verified'
+                ? severity === 'cleared'
+                  ? 'CLEARED — LOW RISK'
+                  : severity === 'warning'
+                    ? 'VERIFY THREAT LEVEL'
+                    : 'CONTAINMENT ALERT'
+                : '…'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`badge-doc badge-doc--unlocking badge-doc--unlocking-${severity}`}
+        role="document"
+      >
         <div className="badge-doc__stripe badge-doc__stripe--entry">
           <Shield size={20} />
           <span>SCP FIELD INTAKE — SUBJECT CHECK</span>

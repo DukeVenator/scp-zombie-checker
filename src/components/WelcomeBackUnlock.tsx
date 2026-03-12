@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useAgentProfile } from '../hooks/useAgentProfile'
 
@@ -7,14 +8,19 @@ const WELCOME_DURATION_MS = 2200
 const PHASE_VERIFIED_MS = 600
 const DELAY_AFTER_STARTUP_MS = 200
 
+function isBadgePage(pathname: string): boolean {
+  return pathname === '/badge' || pathname === 'badge' || pathname.endsWith('/badge')
+}
+
 export const WelcomeBackUnlock = () => {
+  const location = useLocation()
   const { profile, showSetup } = useAgentProfile()
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState<'welcome' | 'verified'>('welcome')
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
-    if (!profile || showSetup) {
+    if (!profile || showSetup || isBadgePage(location.pathname)) {
       return
     }
 
@@ -45,9 +51,9 @@ export const WelcomeBackUnlock = () => {
       timeoutsRef.current.forEach(clearTimeout)
       timeoutsRef.current = []
     }
-  }, [profile, showSetup])
+  }, [profile, showSetup, location.pathname])
 
-  if (!visible || !profile) {
+  if (!visible || !profile || isBadgePage(location.pathname)) {
     return null
   }
 

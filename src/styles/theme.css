@@ -1829,6 +1829,7 @@ fieldset {
 
 /* ── Badge page (standalone / scan target) ── */
 .badge-page {
+  position: relative;
   min-height: 100vh;
   padding: 1.5rem 1rem 2rem;
   background: var(--bg);
@@ -1839,6 +1840,48 @@ fieldset {
 
 .badge-page--error {
   justify-content: center;
+}
+
+/* Page-level entry: fade/slide in when badge-page--entered is set */
+.badge-page:not(.badge-page--entered) {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.badge-page.badge-page--entered {
+  animation: badgePageReveal 0.35s ease both;
+}
+
+.badge-page__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 40vh;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.badge-page__loading-icon {
+  animation: badgeLoadingPulse 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-page__loading-icon {
+    animation: none;
+  }
+}
+
+@keyframes badgeLoadingPulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
 }
 
 .badge-page__actions {
@@ -2062,6 +2105,13 @@ fieldset {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .badge-page:not(.badge-page--entered) {
+    opacity: 1;
+    transform: none;
+  }
+  .badge-page.badge-page--entered {
+    animation: none;
+  }
   .badge-page:not(.badge-page--entered) .badge-doc__stripe--entry,
   .badge-page:not(.badge-page--entered) .badge-doc__header--entry,
   .badge-page:not(.badge-page--entered) .badge-doc__body--entry {
@@ -2072,6 +2122,17 @@ fieldset {
   .badge-page--entered .badge-doc__header--entry,
   .badge-page--entered .badge-doc__body--entry {
     animation: none;
+  }
+}
+
+@keyframes badgePageReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -2086,22 +2147,60 @@ fieldset {
   }
 }
 
-/* Severity-driven badge styling */
-.badge-page[data-severity="critical"] .badge-doc {
-  border-color: rgba(214, 90, 90, 0.4);
-  animation: badgeCriticalPulse 2.5s ease-in-out 0.5s 1;
+/* Severity-driven badge styling — use both class and data-severity for reliability */
+.badge-page[data-severity="critical"] .badge-doc,
+.badge-page.badge-page--severity-critical .badge-doc {
+  border-color: rgba(214, 90, 90, 0.55);
+  border-width: 2px;
+  animation: badgeCriticalPulse 2.5s ease-in-out 0.5s 1 both;
 }
 
-.badge-page[data-severity="warning"] .badge-doc {
-  border-color: rgba(209, 201, 164, 0.35);
+/* Critical: one-time pulse on status badge */
+.badge-page[data-severity="critical"] .badge-doc__meta .badge,
+.badge-page.badge-page--severity-critical .badge-doc__meta .badge {
+  animation: badgeStatusBadgePulse 1.25s ease-in-out 0.8s 1 both;
 }
 
-.badge-page[data-severity="cleared"] .badge-doc {
-  border-color: rgba(255, 255, 255, 0.18);
+.badge-page[data-severity="warning"] .badge-doc,
+.badge-page.badge-page--severity-warning .badge-doc {
+  border-color: rgba(209, 201, 164, 0.5);
+  border-width: 2px;
+}
+
+/* Warning: gentle one-time pulse on infection % value */
+.badge-page[data-severity="warning"] .badge-doc__meta dd.badge-doc__warn,
+.badge-page.badge-page--severity-warning .badge-doc__meta dd.badge-doc__warn {
+  animation: badgeInfectionPulse 1s ease-in-out 0.6s 1 both;
+}
+
+.badge-page[data-severity="cleared"] .badge-doc,
+.badge-page.badge-page--severity-cleared .badge-doc {
+  border-color: rgba(168, 224, 192, 0.4);
+  border-width: 2px;
+  background: linear-gradient(180deg, rgba(168, 224, 192, 0.08) 0%, var(--panel-strong) 30%);
+}
+
+/* Cleared: one-time success micro-animation on status badge */
+.badge-page[data-severity="cleared"] .badge-doc__meta .badge,
+.badge-page.badge-page--severity-cleared .badge-doc__meta .badge {
+  animation: badgeClearedPop 0.5s ease-out 0.4s 1 both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .badge-page[data-severity="critical"] .badge-doc {
+  .badge-page[data-severity="critical"] .badge-doc,
+  .badge-page.badge-page--severity-critical .badge-doc {
+    animation: none;
+  }
+  .badge-page[data-severity="critical"] .badge-doc__meta .badge,
+  .badge-page.badge-page--severity-critical .badge-doc__meta .badge {
+    animation: none;
+  }
+  .badge-page[data-severity="warning"] .badge-doc__meta dd.badge-doc__warn,
+  .badge-page.badge-page--severity-warning .badge-doc__meta dd.badge-doc__warn {
+    animation: none;
+  }
+  .badge-page[data-severity="cleared"] .badge-doc__meta .badge,
+  .badge-page.badge-page--severity-cleared .badge-doc__meta .badge {
     animation: none;
   }
 }
@@ -2112,6 +2211,293 @@ fieldset {
   }
   50% {
     box-shadow: 0 0 0 4px rgba(214, 90, 90, 0.15);
+  }
+}
+
+@keyframes badgeStatusBadgePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(214, 90, 90, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(214, 90, 90, 0.25);
+  }
+}
+
+@keyframes badgeInfectionPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: none;
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(209, 201, 164, 0.2);
+  }
+}
+
+@keyframes badgeClearedPop {
+  0% {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+  70% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Unlock overlay: severity-based (cleared / warning / critical) */
+.badge-unlock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.75);
+  animation: badgeUnlockOverlayIn 280ms ease both;
+  pointer-events: none;
+}
+
+.badge-unlock-overlay__modal {
+  display: grid;
+  gap: 1rem;
+  place-items: center;
+  text-align: center;
+  padding: 1.75rem 2rem;
+  min-width: min(280px, 100%);
+  border-radius: 20px;
+  animation: badgeUnlockModalPop 380ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+/* Cleared: green */
+.badge-unlock-overlay--cleared .badge-unlock-overlay__modal {
+  background: linear-gradient(180deg, rgba(18, 28, 22, 0.98), rgba(10, 18, 14, 0.99));
+  border: 1px solid rgba(168, 224, 192, 0.25);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(168, 224, 192, 0.08);
+}
+
+.badge-unlock-overlay--cleared .badge-unlock-overlay__icon-wrap {
+  background: rgba(168, 224, 192, 0.08);
+  border: 1px solid rgba(168, 224, 192, 0.2);
+  color: #a8e0c0;
+}
+
+.badge-unlock-overlay--cleared .badge-unlock-overlay__icon--verified {
+  color: rgba(168, 224, 192, 0.98);
+}
+
+.badge-unlock-overlay--cleared .badge-unlock-overlay__line--highlight {
+  color: rgba(168, 224, 192, 1);
+}
+
+/* Warning: amber */
+.badge-unlock-overlay--warning .badge-unlock-overlay__modal {
+  background: linear-gradient(180deg, rgba(28, 26, 18, 0.98), rgba(18, 16, 10, 0.99));
+  border: 1px solid rgba(209, 201, 164, 0.3);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(209, 201, 164, 0.1);
+}
+
+.badge-unlock-overlay--warning .badge-unlock-overlay__icon-wrap {
+  background: rgba(209, 201, 164, 0.1);
+  border: 1px solid rgba(209, 201, 164, 0.25);
+  color: #d1c9a4;
+}
+
+.badge-unlock-overlay--warning .badge-unlock-overlay__icon--verified {
+  color: rgba(209, 201, 164, 0.98);
+}
+
+.badge-unlock-overlay--warning .badge-unlock-overlay__line--highlight {
+  color: rgba(225, 218, 180, 1);
+}
+
+/* Critical: red */
+.badge-unlock-overlay--critical .badge-unlock-overlay__modal {
+  background: linear-gradient(180deg, rgba(28, 18, 18, 0.98), rgba(18, 10, 10, 0.99));
+  border: 1px solid rgba(214, 90, 90, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(214, 90, 90, 0.12);
+}
+
+.badge-unlock-overlay--critical .badge-unlock-overlay__icon-wrap {
+  background: rgba(214, 90, 90, 0.1);
+  border: 1px solid rgba(214, 90, 90, 0.3);
+  color: #d65a5a;
+}
+
+.badge-unlock-overlay--critical .badge-unlock-overlay__icon--verified {
+  color: rgba(214, 90, 90, 0.98);
+}
+
+.badge-unlock-overlay--critical .badge-unlock-overlay__line--highlight {
+  color: rgba(230, 140, 140, 1);
+}
+
+.badge-unlock-overlay__icon-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.badge-unlock-overlay__icon {
+  color: rgba(255, 255, 255, 0.85);
+  transition: color 200ms ease;
+}
+
+.badge-unlock-overlay__icon--verified {
+  animation: badgeUnlockIconVerified 420ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.badge-unlock-overlay__line {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.badge-unlock-overlay__line--highlight {
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+
+.badge-unlock-overlay__modal[data-phase="verified"] .badge-unlock-overlay__line--highlight {
+  animation: badgeUnlockTextVerified 320ms ease both;
+}
+
+/* Unlocking badge: severity-specific doc animation */
+.badge-doc.badge-doc--unlocking-cleared {
+  animation: badgeUnlockingCleared 1s ease-out 0.2s 1 both;
+}
+
+.badge-doc.badge-doc--unlocking-warning {
+  animation: badgeUnlockingWarning 1s ease-out 0.2s 1 both;
+}
+
+.badge-doc.badge-doc--unlocking-critical {
+  animation: badgeUnlockingCritical 1s ease-out 0.2s 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-unlock-overlay {
+    animation-duration: 120ms;
+  }
+  .badge-unlock-overlay__modal {
+    animation: none;
+  }
+  .badge-unlock-overlay__icon--verified {
+    animation: none;
+  }
+  .badge-unlock-overlay__modal[data-phase="verified"] .badge-unlock-overlay__line--highlight {
+    animation: none;
+  }
+  .badge-doc.badge-doc--unlocking-cleared,
+  .badge-doc.badge-doc--unlocking-warning,
+  .badge-doc.badge-doc--unlocking-critical {
+    animation: none;
+  }
+}
+
+@keyframes badgeUnlockOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes badgeUnlockModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes badgeUnlockIconVerified {
+  from {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes badgeUnlockTextVerified {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes badgeUnlockingCleared {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(168, 224, 192, 0);
+  }
+  40% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 6px rgba(168, 224, 192, 0.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(168, 224, 192, 0);
+  }
+}
+
+@keyframes badgeUnlockingWarning {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(209, 201, 164, 0);
+  }
+  40% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 6px rgba(209, 201, 164, 0.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(209, 201, 164, 0);
+  }
+}
+
+@keyframes badgeUnlockingCritical {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.98);
+    box-shadow: 0 0 0 0 rgba(214, 90, 90, 0);
+  }
+  40% {
+    transform: scale(1.01);
+    box-shadow: 0 0 0 6px rgba(214, 90, 90, 0.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(214, 90, 90, 0);
   }
 }
 
