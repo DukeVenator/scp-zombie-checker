@@ -21,7 +21,8 @@ test('first run agent onboarding can activate a local agent profile', async ({ p
   await page.goto('/#/')
 
   await expect(page.getByText('Booting field console')).toBeVisible()
-  await expect(page.getByText(/configure agent profile/i)).toBeVisible({ timeout: 3000 })
+  // Boot sequence is 1800ms; wait for form so we're past it (CI can be slow)
+  await expect(page.getByRole('heading', { name: /configure agent profile/i })).toBeVisible({ timeout: 6000 })
 
   await page.getByLabel('Agent name').fill('Dana Voss')
   await page.getByLabel('Callsign').fill('MTF-11')
