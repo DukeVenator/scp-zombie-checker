@@ -1,10 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { AgentOnboarding } from './AgentOnboarding'
-
-afterEach(cleanup)
 
 const completeSetup = vi.fn()
 const pushToast = vi.fn()

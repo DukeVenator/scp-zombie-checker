@@ -1,7 +1,7 @@
 import { MemoryRouter } from 'react-router-dom'
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NewPatientWizard } from './NewPatientWizard'
 import { createPatientRecord } from '../../lib/storage'
 
@@ -54,10 +54,6 @@ const ackWarning = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('NewPatientWizard', () => {
   beforeEach(() => {
     pushToast.mockClear()
-  })
-
-  afterEach(() => {
-    cleanup()
   })
 
   it('walks through each step and saves a patient', async () => {

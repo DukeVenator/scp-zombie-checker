@@ -110,6 +110,26 @@ export const PatientDetailPage = () => {
     }
   }, [patient])
 
+  const sortedWarnings = useMemo(
+    () => (patient ? sortWarnings(patient.classification.warnings) : []),
+    [patient]
+  )
+  const topTags = useMemo(() => {
+    if (!patient) return []
+    const infectionPct = calculateInfectionProbability(patient.checklist)
+    const noPulse = !patient.checklist.heartbeatDetected || patient.checklist.heartbeatBpm === 0
+    const containment = patient.containmentStatus ?? 'Normal'
+    const variant = patient.variant ?? 'Normal'
+    const activeSymptoms = Object.entries(patient.checklist.symptoms).filter(([, v]) => v).map(([k]) => k)
+    const tags: string[] = []
+    if (infectionPct >= 81) tags.push('TERMINATE ON SIGHT')
+    if (noPulse) tags.push('NO HEARTBEAT')
+    if (variant !== 'Normal') tags.push(variant.toUpperCase())
+    if (containment !== 'Normal') tags.push(containment.toUpperCase())
+    if (activeSymptoms.length >= 3) tags.push('MULTI-SYMPTOM CLUSTER')
+    return tags
+  }, [patient])
+
   if (!patient) {
     return (
       <div className="panel">
@@ -145,23 +165,11 @@ export const PatientDetailPage = () => {
   })()
 
   const warningCount = classification.warnings.length
-  const directiveCount = directives.length
-  const sortedWarnings = useMemo(() => sortWarnings(classification.warnings), [classification.warnings])
   const topWarning = sortedWarnings[0] as PatientWarning | undefined
   const remainingWarnings = sortedWarnings.slice(1)
   const topDirective = directives[0]
   const remainingDirectives = directives.slice(1)
   const activeSymptoms = Object.entries(patient.checklist.symptoms).filter(([, v]) => v).map(([k]) => k)
-
-  const topTags: string[] = useMemo(() => {
-    const tags: string[] = []
-    if (terminateOnSight) tags.push('TERMINATE ON SIGHT')
-    if (noPulse) tags.push('NO HEARTBEAT')
-    if (variant !== 'Normal') tags.push(variant.toUpperCase())
-    if (containment !== 'Normal') tags.push(containment.toUpperCase())
-    if (activeSymptoms.length >= 3) tags.push('MULTI-SYMPTOM CLUSTER')
-    return tags
-  }, [terminateOnSight, noPulse, variant, containment, activeSymptoms.length])
 
   const toggleWizard = (which: ActiveWizard) =>
     setActiveWizard((prev) => (prev === which ? 'none' : which))

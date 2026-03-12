@@ -1,6 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { SymptomUpdateWizard } from './SymptomUpdateWizard'
 import { createPatientRecord } from '../../lib/storage'
 import { defaultPatientInput, type PatientInput } from '../../types/patient'
@@ -50,10 +50,6 @@ const ackWarning = async (user: ReturnType<typeof userEvent.setup>) => {
 }
 
 describe('SymptomUpdateWizard', () => {
-  afterEach(() => {
-    cleanup()
-  })
-
   it('steps through update wizard and saves the revision', async () => {
     const user = userEvent.setup()
     const source = defaultPatientInput()

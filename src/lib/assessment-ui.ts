@@ -1,5 +1,5 @@
 import type { ToastTone } from './toast-store-context'
-import type { ClassificationResult, ContainmentStatus, PatientInput, ZombieChecklist, ZombieVariant } from '../types/patient'
+import type { ClassificationResult, ContainmentStatus, ZombieChecklist, ZombieVariant } from '../types/patient'
 
 export const getClassificationToastTone = (classification: ClassificationResult): ToastTone => {
   switch (classification.status) {

@@ -32,7 +32,7 @@ export const StatusEditorWizard = ({ patient, onSave, onClose }: StatusEditorWiz
 
   const handleConfirm = async () => {
     setSaving(true)
-    const record = await onSave(patient.id, selected)
+    await onSave(patient.id, selected)
     setSaving(false)
     pushToast({
       title: `Status updated: ${selected}`,

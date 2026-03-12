@@ -32,7 +32,7 @@ export const VariantWizard = ({ patient, onSave, onClose }: VariantWizardProps) 
 
   const handleConfirm = async () => {
     setSaving(true)
-    const record = await onSave(patient.id, selected)
+    await onSave(patient.id, selected)
     setSaving(false)
     pushToast({
       title: `Variant assigned: ${selected}`,
