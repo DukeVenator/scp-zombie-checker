@@ -555,6 +555,7 @@ export const NewPatientWizard = ({ patients, onSave }: NewPatientWizardProps) =>
                 <span className="sticky-header__prompt-label sticky-header__prompt-label--caution">CAUTION</span>
               )}
               <span className="sticky-header__prompt-cta">MORE DETAILS — CLICK HERE FOR ACTIONS</span>
+              <span className="sticky-header__prompt-cta-mobile" aria-hidden="true">Details</span>
             </div>
             <div className="step-progress-bar">
               <div className="step-progress-bar__fill" style={{ width: `${progress}%` }} />

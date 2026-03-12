@@ -30,7 +30,8 @@ test('first run agent onboarding can activate a local agent profile', async ({ p
   await page.getByLabel('Clearance level').selectOption('4')
   await page.getByRole('button', { name: /activate agent profile/i }).click()
 
-  await expect(page.getByText(/active agent MTF-11/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'SCP Zombie Checker' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
 })
 
 test('dashboard loads and navigation works', async ({ page }) => {

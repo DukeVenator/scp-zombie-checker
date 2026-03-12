@@ -75,6 +75,7 @@ export const AppShell = () => {
             key={to}
             to={to}
             end={to === '/'}
+            aria-label={label}
             className={({ isActive }) => `nav-link ${isActive ? 'is-active' : ''}`}
           >
             <Icon size={18} />

@@ -71,6 +71,29 @@ test('badge page with valid payload shows document content', async ({ page }) =>
   await expect(page.locator('.badge-doc__qr-wrap')).toBeVisible()
 })
 
+test('badge page at mobile viewport shows stacked layout with subject info and QR visible', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 })
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Cleared',
+    infectionPct: 25,
+    containment: 'Normal',
+    variant: 'Normal',
+    threatLevel: 'Low',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.getByText('Loading document…')).toBeVisible()
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.badge-unlock-overlay')).not.toBeVisible({ timeout: 5000 })
+
+  await expect(page.getByRole('heading', { name: 'E2E Badge Subject' })).toBeVisible()
+  await expect(page.locator('.badge-doc__col--info')).toBeVisible()
+  await expect(page.locator('.badge-doc__meta').getByText('Cleared').first()).toBeVisible()
+  await expect(page.getByText('25%')).toBeVisible()
+  await expect(page.locator('.badge-doc__qr-wrap')).toBeVisible()
+})
+
 test('badge page loading state shows shield icon and loading text', async ({ page }) => {
   const d = encodeBadgeParam({
     ...basePayload,

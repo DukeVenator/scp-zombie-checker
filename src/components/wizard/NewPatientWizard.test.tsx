@@ -159,6 +159,7 @@ describe('NewPatientWizard', () => {
     const header = screen.getByRole('button', { name: /cleared/i })
     expect(header).toBeInTheDocument()
     expect(header.classList.contains('sticky-header')).toBe(true)
+    expect(within(header).getByText('Details')).toBeInTheDocument()
     expect(screen.getAllByText(/infection/i).length).toBeGreaterThan(0)
 
     expect(screen.queryByText(/live scp threat board/i)).not.toBeInTheDocument()

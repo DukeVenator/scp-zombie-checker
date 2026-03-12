@@ -1047,6 +1047,10 @@ fieldset {
   font-weight: 600;
 }
 
+.sticky-header__prompt-cta-mobile {
+  display: none;
+}
+
 .sticky-header__badges {
   display: flex;
   flex-wrap: wrap;
@@ -1965,12 +1969,6 @@ fieldset {
   align-items: start;
 }
 
-@media (max-width: 480px) {
-  .badge-doc__row--main {
-    grid-template-columns: 1fr;
-  }
-}
-
 .badge-doc__col--info {
   min-width: 0;
 }
@@ -2022,6 +2020,7 @@ fieldset {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .badge-doc__qr-wrap {
@@ -2029,6 +2028,13 @@ fieldset {
   background: #fff;
   border-radius: 12px;
   border: 1px solid var(--border);
+  max-width: 200px;
+}
+
+.badge-doc__qr-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .badge-doc__scan-hint {
@@ -3320,6 +3326,76 @@ fieldset {
     padding-bottom: 10rem;
   }
 
+  /* Dashboard (client page): hero and content layout for small screens */
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.85rem 1rem;
+  }
+
+  .hero h2 {
+    font-size: clamp(1.1rem, 4vw, 1.35rem);
+  }
+
+  .hero .muted {
+    font-size: 0.85rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hero-actions > * {
+    width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .section-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .section-heading h3 {
+    font-size: 1rem;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* App header: compact for mobile */
+  .app-header {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .app-header .subtitle {
+    display: none;
+  }
+
+  .app-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .status-cluster {
+    flex-shrink: 0;
+    gap: 0.4rem;
+  }
+
+  .status-pill,
+  .app-header .ghost-button {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  /* Bottom nav: icon-only on mobile */
+  .bottom-nav .nav-link span {
+    display: none;
+  }
+
   .patient-detail-layout > .warning-panel {
     order: -1;
   }
@@ -3366,6 +3442,25 @@ fieldset {
     border-radius: 0 0 16px 16px;
   }
 
+  .sticky-header__row,
+  .sticky-header__badges {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .sticky-header__progress {
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .sticky-header__prompt-cta {
+    display: none;
+  }
+
+  .sticky-header__prompt-cta-mobile {
+    display: inline;
+  }
+
   .sticky-header__core {
     gap: 0.4rem;
     margin-bottom: 0.25rem;
@@ -3405,6 +3500,35 @@ fieldset {
 
   .terminate-banner span {
     font-size: 0.72rem;
+  }
+
+  /* Badge page: stack row at 767px, responsive QR and padding */
+  .badge-doc__row--main {
+    grid-template-columns: 1fr;
+  }
+
+  .badge-page {
+    padding: 1rem 0.75rem 1.5rem;
+  }
+
+  .badge-doc {
+    max-width: min(520px, calc(100vw - 1.5rem));
+  }
+
+  .badge-doc__body {
+    padding: 0.9rem 1rem;
+  }
+
+  .badge-doc__name {
+    font-size: 1.15rem;
+  }
+
+  .badge-doc__meta {
+    font-size: 0.8rem;
+  }
+
+  .badge-doc__qr-wrap {
+    max-width: 160px;
   }
 }
 
