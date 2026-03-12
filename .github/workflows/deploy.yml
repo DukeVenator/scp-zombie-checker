@@ -55,8 +55,9 @@ jobs:
         with:
           path: ./dist
 
+  # Deploy on push to main or when manually run from main (skipped on pull_request)
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
