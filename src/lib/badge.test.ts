@@ -93,6 +93,18 @@ describe('badgeSeverity', () => {
   it('returns critical for Critical status', () => {
     expect(badgeSeverity({ ...minimalPayload, status: 'Critical' })).toBe('critical')
   })
+
+  it('returns warning for Observation status', () => {
+    expect(badgeSeverity({ ...minimalPayload, status: 'Observation' })).toBe('warning')
+  })
+
+  it('returns warning for Suspected status', () => {
+    expect(badgeSeverity({ ...minimalPayload, status: 'Suspected' })).toBe('warning')
+  })
+
+  it('returns warning for infection 40-69% when status is Cleared', () => {
+    expect(badgeSeverity({ ...minimalPayload, status: 'Cleared', infectionPct: 50 })).toBe('warning')
+  })
 })
 
 describe('getBadgeUrl', () => {

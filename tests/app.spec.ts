@@ -152,6 +152,24 @@ test('dashboard loads and navigation works', async ({ page }) => {
   await expect(page.getByText('Export or import patient files')).toBeVisible()
 })
 
+test('load demo records adds five patients and dashboard shows Caution; terminated card has no TERMINATE ON SIGHT', async ({
+  page,
+}) => {
+  await seedAgentProfile(page)
+  await page.goto('/#/')
+
+  await expect(page.getByRole('heading', { name: 'SCP Zombie Checker' })).toBeVisible()
+  const loadDemoBtn = page.getByRole('button', { name: /load demo records/i })
+  await expect(loadDemoBtn).toBeVisible()
+  await loadDemoBtn.click()
+
+  await expect(page.getByText('Demo records loaded')).toBeVisible({ timeout: 3000 })
+  await expect(page.getByRole('status').getByText(/Caution/)).toBeVisible({ timeout: 2000 })
+  const subject07Card = page.locator('.patient-card').filter({ has: page.getByRole('heading', { name: 'Subject 07' }) })
+  await expect(subject07Card).toBeVisible()
+  await expect(subject07Card.getByText('TERMINATE ON SIGHT')).not.toBeVisible()
+})
+
 test('new patient wizard steps through and saves a record', async ({ page }) => {
   await seedAgentProfile(page)
   await page.goto('/#/')

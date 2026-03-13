@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # push version bump back to repo
   pages: write
   id-token: write
 
@@ -32,6 +32,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Bump version (deploy only)
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        id: bump
+        run: |
+          NEW_VERSION=$(npm version patch --no-git-tag-version)
+          echo "version=${NEW_VERSION#v}" >> $GITHUB_OUTPUT
+          echo "Bumped to ${NEW_VERSION#v}"
+
       - name: Run lint
         run: npm run lint
 
@@ -46,6 +54,15 @@ jobs:
 
       - name: Build app
         run: npm run build
+
+      - name: Push version bump to repo
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.bump.outputs.version != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --staged --quiet || git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+          git push
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

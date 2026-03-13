@@ -50,7 +50,8 @@ function initCriticalSpores(w: number, h: number) {
   }))
 }
 
-/** Terminated: no particle array; we use film-grain noise drawn per frame (see loop). */
+/** Terminated: no particle array; lightweight scanlines drawn per frame (see loop). */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- same signature as other inits
 function initTerminatedParticles(_w: number, _h: number) {
   return []
 }

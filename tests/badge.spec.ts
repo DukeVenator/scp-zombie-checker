@@ -415,3 +415,20 @@ test('badge page severity-specific vignette and scanlines classes', async ({ pag
   await expect(page.locator('.badge-page__vignette--warning')).toBeVisible()
   await expect(page.locator('.badge-page__scanlines--warning')).toBeVisible()
 })
+
+test('badge page applies severity styling for terminated payload', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Terminated',
+    infectionPct: 100,
+    containment: 'Terminated',
+    variant: 'Normal',
+    threatLevel: 'Low',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.badge-page')).toHaveAttribute('data-severity', 'terminated')
+  await expect(page.locator('.badge-page')).toHaveClass(/badge-page--severity-terminated/)
+  await expect(page.locator('.badge-doc__terminated').getByText(/no longer a threat|terminated/i)).toBeVisible()
+})

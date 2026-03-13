@@ -94,6 +94,7 @@ export const DashboardPage = () => {
 
   const stats = useMemo(() => {
     let criticalCount = 0
+    let cautionCount = 0
     let containedCount = 0
     let escapedCount = 0
     let terminateCount = 0
@@ -106,6 +107,7 @@ export const DashboardPage = () => {
       const status = p.classification.status
       statusBreakdown[status] = (statusBreakdown[status] ?? 0) + 1
       if (['Critical', 'Contained', 'Suspected'].includes(status)) criticalCount++
+      if (status === 'Observation') cautionCount++
 
       const cs = p.containmentStatus ?? 'Normal'
       if (cs === 'Contained' || cs === 'Threat' || cs === 'Known Threat') containedCount++
@@ -115,14 +117,15 @@ export const DashboardPage = () => {
       if (v !== 'Normal') variantBreakdown[v] = (variantBreakdown[v] ?? 0) + 1
 
       const inf = calculateInfectionProbability(p.checklist)
-      if (inf >= 81) terminateCount++
+      const isTerminated = status === 'Terminated' || cs === 'Terminated'
+      if (inf >= 81 && !isTerminated) terminateCount++
       if (inf > highestInfection) {
         highestInfection = inf
         highestInfectionName = p.identity.name
       }
     })
 
-    return { criticalCount, containedCount, escapedCount, terminateCount, highestInfection, highestInfectionName, statusBreakdown, variantBreakdown }
+    return { criticalCount, cautionCount, containedCount, escapedCount, terminateCount, highestInfection, highestInfectionName, statusBreakdown, variantBreakdown }
   }, [patients])
 
   useEffect(() => {
@@ -201,6 +204,12 @@ export const DashboardPage = () => {
         </div>
       )}
 
+      {stats.cautionCount > 0 && (
+        <div className="dash-alert dash-alert--caution" role="status">
+          <strong>{stats.cautionCount} Caution</strong>
+          <span>— subject{stats.cautionCount > 1 ? 's' : ''} under observation. Monitor for escalation.</span>
+        </div>
+      )}
       <section className="metrics-grid">
         <article className="panel metric-card">
           <span className="metric-value">{patients.length}</span>
@@ -209,6 +218,12 @@ export const DashboardPage = () => {
         <article className="panel metric-card">
           <span className="metric-value metric-value--warn">{stats.criticalCount}</span>
           <span className="muted">Needs SCP action</span>
+        </article>
+        <article className="panel metric-card">
+          <span className={`metric-value ${stats.cautionCount > 0 ? 'metric-value--caution' : ''}`}>
+            {stats.cautionCount}
+          </span>
+          <span className="muted">Caution</span>
         </article>
         <article className="panel metric-card">
           <span className="metric-value metric-value--danger">{stats.containedCount}</span>

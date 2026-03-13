@@ -17,7 +17,8 @@ export const PatientCard = ({ patient }: PatientCardProps) => {
   const containment = patient.containmentStatus ?? 'Normal'
   const variant = patient.variant ?? 'Normal'
   const noPulse = !patient.checklist.heartbeatDetected || patient.checklist.heartbeatBpm === 0
-  const terminate = infectionPct >= 81
+  const isTerminated = patient.classification.status === 'Terminated' || containment === 'Terminated'
+  const terminate = infectionPct >= 81 && !isTerminated
 
   return (
     <article className={`panel patient-card ${terminate ? 'patient-card--terminate' : ''}`}>

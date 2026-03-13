@@ -18,9 +18,16 @@ vi.mock('../hooks/usePatientStore', () => ({
     input.identity.skinPigmentation = 'Fair'
     const patient = createPatientRecord(input)
 
+    const observationInput = defaultPatientInput()
+    observationInput.identity.name = 'Morgan Reid'
+    observationInput.checklist.temperatureC = 38.6
+    observationInput.checklist.heartbeatBpm = 38
+    const observationPatient = createPatientRecord(observationInput)
+
+    const patients = [patient, observationPatient]
     return {
-      patients: [patient],
-      recentPatients: [patient],
+      patients,
+      recentPatients: patients,
       loading: false,
       importRecords,
     }
@@ -52,6 +59,7 @@ describe('DashboardPage', () => {
     expect(screen.getAllByText(/Risk/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Infected/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Needs SCP action/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Caution/).length).toBeGreaterThan(0)
   })
 
   it('filters patient records from the registry', async () => {
@@ -67,4 +75,5 @@ describe('DashboardPage', () => {
     await user.type(screen.getAllByPlaceholderText(/search by name/i).at(-1) as HTMLInputElement, 'missing')
     expect(screen.getByText(/No matching patient records yet/i)).toBeInTheDocument()
   })
+
 })

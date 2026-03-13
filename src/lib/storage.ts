@@ -118,7 +118,8 @@ export const updatePatientStatus = async (
   return updated
 }
 
-const TERMINATED_CLASSIFICATION = {
+/** Used when status is set to Terminated (and for demo terminated record). */
+export const TERMINATED_CLASSIFICATION = {
   status: 'Terminated' as const,
   riskScore: 0,
   summary: 'Subject terminated. No longer a threat.',
