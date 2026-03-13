@@ -238,6 +238,8 @@ export const getStatusTone = (status: ClassificationResult['status']) => {
       return 'warning'
     case 'Observation':
       return 'info'
+    case 'Terminated':
+      return 'safe'
     default:
       return 'safe'
   }

@@ -6,6 +6,7 @@ import {
   importPatients,
   listPatients,
   savePatient,
+  updatePatientClassificationStatus,
   updatePatientStatus,
   updatePatientVariant,
 } from './storage'
@@ -75,6 +76,11 @@ export const PatientStoreProvider = ({ children }: { children: ReactNode }) => {
       },
       setContainmentStatus: async (id, status) => {
         const record = await updatePatientStatus(id, status, agent)
+        await refresh()
+        return record
+      },
+      setClassificationStatus: async (id, status) => {
+        const record = await updatePatientClassificationStatus(id, status, agent)
         await refresh()
         return record
       },

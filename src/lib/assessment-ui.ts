@@ -10,13 +10,16 @@ export const getClassificationToastTone = (classification: ClassificationResult)
       return 'warning'
     case 'Observation':
       return 'info'
+    case 'Terminated':
+      return 'success'
     default:
       return 'success'
   }
 }
 
 export const isHighAlertClassification = (classification: ClassificationResult) =>
-  classification.status === 'Contained' || classification.status === 'Critical' || classification.riskScore >= 8
+  classification.status !== 'Terminated' &&
+  (classification.status === 'Contained' || classification.status === 'Critical' || classification.riskScore >= 8)
 
 export const getThreatLevel = (classification: ClassificationResult) => {
   if (classification.riskScore >= 11) {
@@ -43,6 +46,9 @@ export const getObjectClass = (
   classification: ClassificationResult,
   containmentStatus?: ContainmentStatus | null
 ): string => {
+  if (classification.status === 'Terminated' || containmentStatus === 'Terminated') {
+    return 'Safe'
+  }
   if (containmentStatus === 'Escaped' || classification.status === 'Critical' || classification.riskScore >= 8) {
     return 'Keter'
   }
@@ -286,6 +292,7 @@ export const containmentOptions: ContainmentOption[] = [
   { id: 'Threat', label: 'Threat', subtitle: 'Active threat designation. Armed personnel required.', severity: 'danger' },
   { id: 'Known Threat', label: 'Known Threat', subtitle: 'Previously confirmed hostile. Maximum security posture.', severity: 'danger' },
   { id: 'Escaped', label: 'Escaped', subtitle: 'Subject has broken containment. Pursue and recapture immediately.', severity: 'danger' },
+  { id: 'Terminated', label: 'Terminated', subtitle: 'Subject terminated. No longer a threat.', severity: 'normal' },
 ]
 
 export type VariantOption = {

@@ -24,6 +24,7 @@ import { ToastViewport } from '../feedback/ToastViewport'
 type SymptomUpdateWizardProps = {
   patient: PatientRecord
   onSave: (input: PatientInput, existingId: string) => Promise<void>
+  onClose?: () => void
 }
 
 const symptomLabels: Record<keyof PatientInput['checklist']['symptoms'], string> = {
@@ -59,7 +60,7 @@ const STEPS: StepDef[] = [
   { id: 'review', label: 'Confirm update', subtitle: 'Review changes and commit the updated assessment.', kind: 'review' },
 ]
 
-export const SymptomUpdateWizard = ({ patient, onSave }: SymptomUpdateWizardProps) => {
+export const SymptomUpdateWizard = ({ patient, onSave, onClose }: SymptomUpdateWizardProps) => {
   const { profile, openSetup } = useAgentProfile()
   const [form, setForm] = useState<PatientInput>({
     identity: patient.identity,
@@ -127,8 +128,10 @@ export const SymptomUpdateWizard = ({ patient, onSave }: SymptomUpdateWizardProp
       setSymptomAck(null)
       setTempAck(null)
       setEmfAck(null)
+    } else if (onClose) {
+      onClose()
     }
-  }, [stepIdx])
+  }, [stepIdx, onClose])
 
   const setChecklist = useCallback((field: string, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, checklist: { ...prev.checklist, [field]: value } }))
@@ -549,7 +552,14 @@ export const SymptomUpdateWizard = ({ patient, onSave }: SymptomUpdateWizardProp
           </div>
 
           <div className="step-nav">
-            <button className="ghost-button" disabled={stepIdx === 0} onClick={goBack} type="button">Back</button>
+            <button
+              className="ghost-button"
+              disabled={stepIdx === 0 && !onClose}
+              onClick={goBack}
+              type="button"
+            >
+              {stepIdx === 0 && onClose ? 'Cancel' : 'Back'}
+            </button>
             {currentStep.kind !== 'review' && currentStep.kind !== 'yesno' && (
               <button className="ghost-button" onClick={advance} type="button">Skip</button>
             )}

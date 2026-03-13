@@ -31,6 +31,7 @@ import {
   getStatusHumor,
   getSymptomDarkJoke,
 } from '../lib/badge-copy'
+import { classifyPatient } from '../data/scpRules'
 import { buildSinglePatientPayload, downloadJson, exportFileName } from '../lib/export'
 import { addRecentPatient } from '../lib/storage'
 import { defaultReportingAgent } from '../types/agent'
@@ -92,6 +93,7 @@ const containmentBadgeClass = (status: string) => {
     case 'Known Threat': return 'badge--critical'
     case 'Threat': return 'badge--warning'
     case 'Contained': return 'badge--warning'
+    case 'Terminated': return 'badge--terminated'
     default: return ''
   }
 }
@@ -100,7 +102,7 @@ export const PatientDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile } = useAgentProfile()
-  const { patients, removePatient, upsertPatient, setContainmentStatus, setVariant } = usePatientStore()
+  const { patients, removePatient, upsertPatient, setContainmentStatus, setClassificationStatus, setVariant } = usePatientStore()
   const { pushToast } = useToast()
   const [activeWizard, setActiveWizard] = useState<ActiveWizard>('none')
   const [headerOpen, setHeaderOpen] = useState(false)
@@ -121,6 +123,7 @@ export const PatientDetailPage = () => {
   )
   const topTags = useMemo(() => {
     if (!patient) return []
+    if (patient.classification?.status === 'Terminated') return ['TERMINATED']
     const infectionPct = calculateInfectionProbability(patient.checklist)
     const noPulse = !patient.checklist.heartbeatDetected || patient.checklist.heartbeatBpm === 0
     const containment = patient.containmentStatus ?? 'Normal'
@@ -160,7 +163,8 @@ export const PatientDetailPage = () => {
   const noPulse = !patient.checklist.heartbeatDetected || patient.checklist.heartbeatBpm === 0
   const containment = patient.containmentStatus ?? 'Normal'
   const variant = patient.variant ?? 'Normal'
-  const terminateOnSight = infectionPct >= 81
+  const isTerminated = classification.status === 'Terminated'
+  const terminateOnSight = !isTerminated && infectionPct >= 81
 
   /* Print document fields (SCP dossier style) */
   const printItemNumber = `SCP-${patient.id.slice(0, 8).toUpperCase()}`
@@ -184,6 +188,7 @@ export const PatientDetailPage = () => {
       case 'Contained': return 'is-contained'
       case 'Suspected': return 'is-suspected'
       case 'Observation': return 'is-observation'
+      case 'Terminated': return 'is-terminated'
       default: return 'is-cleared'
     }
   })()
@@ -211,7 +216,7 @@ export const PatientDetailPage = () => {
         </div>
       )}
 
-      {containment !== 'Normal' && containmentProcedures[containment] && (
+      {!isTerminated && containment !== 'Normal' && containmentProcedures[containment] && (
         <div className={`status-banner status-banner--${containment === 'Escaped' ? 'critical' : 'warning'}`} role="alert">
           <div className="status-banner__header">
             <ShieldAlert size={20} />
@@ -228,7 +233,7 @@ export const PatientDetailPage = () => {
         </div>
       )}
 
-      {variant !== 'Normal' && variantWarnings[variant] && (
+      {!isTerminated && variant !== 'Normal' && variantWarnings[variant] && (
         <div className={`status-banner status-banner--${variant === 'Alpha' || variant === 'Gate Breaker' ? 'critical' : 'warning'}`} role="alert">
           <div className="status-banner__header">
             <AlertTriangle size={20} />
@@ -248,14 +253,30 @@ export const PatientDetailPage = () => {
           type="button"
         >
           <div className="sticky-header__core">
-            <span className={`badge badge--${classification.status.toLowerCase()}`}>{classification.status}</span>
+            {isTerminated ? (
+              <span className="badge badge--terminated">SUBJECT TERMINATED</span>
+            ) : (
+              <span className={`badge badge--${classification.status.toLowerCase()}`}>{classification.status}</span>
+            )}
 
             <div className="sticky-header__metrics">
-              <span className="sh-metric"><strong>{threatLevel}</strong><span className="sh-metric__label">Threat</span></span>
-              <span className="sh-metric-divider" />
-              <span className="sh-metric"><strong>{classification.riskScore}</strong><span className="sh-metric__label">Risk</span></span>
-              <span className="sh-metric-divider" />
-              <span className={`sh-metric ${infectionClass}`}><strong>{infectionPct}%</strong><span className="sh-metric__label">Infected</span></span>
+              {isTerminated ? (
+                <>
+                  <span className="sh-metric"><strong>—</strong><span className="sh-metric__label">Threat</span></span>
+                  <span className="sh-metric-divider" />
+                  <span className="sh-metric"><strong>0</strong><span className="sh-metric__label">Risk</span></span>
+                  <span className="sh-metric-divider" />
+                  <span className="sh-metric"><strong>Terminated</strong><span className="sh-metric__label">Status</span></span>
+                </>
+              ) : (
+                <>
+                  <span className="sh-metric"><strong>{threatLevel}</strong><span className="sh-metric__label">Threat</span></span>
+                  <span className="sh-metric-divider" />
+                  <span className="sh-metric"><strong>{classification.riskScore}</strong><span className="sh-metric__label">Risk</span></span>
+                  <span className="sh-metric-divider" />
+                  <span className={`sh-metric ${infectionClass}`}><strong>{infectionPct}%</strong><span className="sh-metric__label">Infected</span></span>
+                </>
+              )}
             </div>
 
             <div className="sticky-header__trail">
@@ -270,7 +291,7 @@ export const PatientDetailPage = () => {
           </div>
 
           {/* Desktop-only extra tags */}
-          {(noPulse || terminateOnSight || warningCount > 0) && (
+          {!isTerminated && (noPulse || terminateOnSight || warningCount > 0) && (
             <div className="sticky-header__extras">
               {terminateOnSight && <span className="badge badge--terminate badge--small">TERMINATE</span>}
               {noPulse && <span className="badge badge--critical badge--small">POTENTIAL ZOMBIE</span>}
@@ -281,19 +302,28 @@ export const PatientDetailPage = () => {
               )}
             </div>
           )}
+          {isTerminated && (
+            <div className="sticky-header__extras">
+              <span className="badge badge--terminated badge--small">NO LONGER A THREAT</span>
+            </div>
+          )}
 
           <div className="sh-infection-bar">
-            <div className={`sh-infection-bar__fill ${infectionClass}`} style={{ width: `${infectionPct}%` }} />
+            {!isTerminated && <div className={`sh-infection-bar__fill ${infectionClass}`} style={{ width: `${infectionPct}%` }} />}
           </div>
         </button>
 
         {headerOpen && (
           <div className="sticky-header__dropdown">
           {/* Threat board summary */}
-          <section className={`alert-banner ${highAlert ? 'alert-banner--high' : 'alert-banner--normal'}`}>
+          <section className={`alert-banner ${isTerminated ? 'alert-banner--normal' : highAlert ? 'alert-banner--high' : 'alert-banner--normal'}`}>
             <div>
-              <p className="eyebrow">Live SCP threat board</p>
-              <strong>{classification.status} / Threat {threatLevel} / Risk {classification.riskScore}</strong>
+              <p className="eyebrow">{isTerminated ? 'Subject status' : 'Live SCP threat board'}</p>
+              {isTerminated ? (
+                <strong>SUBJECT TERMINATED — No longer a threat</strong>
+              ) : (
+                <strong>{classification.status} / Threat {threatLevel} / Risk {classification.riskScore}</strong>
+              )}
               <p className="muted">{classification.summary}</p>
             </div>
           </section>
@@ -302,18 +332,27 @@ export const PatientDetailPage = () => {
           {topTags.length > 0 && (
             <div className="alert-tags">
               {topTags.map((tag) => (
-                <span key={tag} className="badge badge--critical badge--small">{tag}</span>
+                <span key={tag} className={`badge badge--small ${tag === 'TERMINATED' ? 'badge--terminated' : 'badge--critical'}`}>{tag}</span>
               ))}
             </div>
           )}
 
           {/* Infection meter */}
-          <div className={`infection-meter ${infectionClass}`}>
-            <div className="infection-meter__bar">
-              <div className="infection-meter__fill" style={{ width: `${infectionPct}%` }} />
+          {isTerminated ? (
+            <div className="infection-meter">
+              <div className="infection-meter__bar">
+                <div className="infection-meter__fill" style={{ width: '0%' }} />
+              </div>
+              <p className="infection-meter__label">Subject terminated. No longer a threat.</p>
             </div>
-            <p className="infection-meter__label">Zombie infection probability: <strong>{infectionPct}%</strong></p>
-          </div>
+          ) : (
+            <div className={`infection-meter ${infectionClass}`}>
+              <div className="infection-meter__bar">
+                <div className="infection-meter__fill" style={{ width: `${infectionPct}%` }} />
+              </div>
+              <p className="infection-meter__label">Zombie infection probability: <strong>{infectionPct}%</strong></p>
+            </div>
+          )}
 
           {/* Most pressing alert + its procedure */}
           {topWarning && (
@@ -497,9 +536,13 @@ export const PatientDetailPage = () => {
                   <div>
                     <dt>Status</dt>
                     <dd>
-                      <span className={`badge badge--${classification.status.toLowerCase()}`}>
-                        {classification.status}
-                      </span>
+                      {isTerminated ? (
+                        <span className="badge badge--terminated">SUBJECT TERMINATED</span>
+                      ) : (
+                        <span className={`badge badge--${classification.status.toLowerCase()}`}>
+                          {classification.status}
+                        </span>
+                      )}
                     </dd>
                   </div>
                   <div>
@@ -528,7 +571,13 @@ export const PatientDetailPage = () => {
                   </div>
                   <div>
                     <dt>Infection probability</dt>
-                    <dd><span className={infectionClass}>{infectionPct}%</span></dd>
+                    <dd>
+                      {isTerminated ? (
+                        <span className="badge badge--terminated">Terminated — N/A</span>
+                      ) : (
+                        <span className={infectionClass}>{infectionPct}%</span>
+                      )}
+                    </dd>
                   </div>
                   <div>
                     <dt>Updated by</dt>
@@ -620,12 +669,21 @@ export const PatientDetailPage = () => {
               )}
             </section>
 
-            <div className={`infection-meter ${infectionClass}`}>
-              <div className="infection-meter__bar">
-                <div className="infection-meter__fill" style={{ width: `${infectionPct}%` }} />
+            {isTerminated ? (
+              <div className="infection-meter">
+                <div className="infection-meter__bar">
+                  <div className="infection-meter__fill" style={{ width: '0%' }} />
+                </div>
+                <p className="infection-meter__label">Subject terminated. No longer a threat.</p>
               </div>
-              <p className="infection-meter__label">Zombie infection probability: <strong>{infectionPct}%</strong></p>
-            </div>
+            ) : (
+              <div className={`infection-meter ${infectionClass}`}>
+                <div className="infection-meter__bar">
+                  <div className="infection-meter__fill" style={{ width: `${infectionPct}%` }} />
+                </div>
+                <p className="infection-meter__label">Zombie infection probability: <strong>{infectionPct}%</strong></p>
+              </div>
+            )}
 
             <div className="button-cluster button-cluster--wrap">
               <button
@@ -661,6 +719,7 @@ export const PatientDetailPage = () => {
                     await upsertPatient(input, existingId)
                     setActiveWizard('none')
                   }}
+                  onClose={() => setActiveWizard('none')}
                 />
               )}
 
@@ -668,6 +727,13 @@ export const PatientDetailPage = () => {
                 <StatusEditorWizard
                   patient={patient}
                   onSave={setContainmentStatus}
+                  onMarkTerminated={async (patientId) => {
+                    await setClassificationStatus(patientId, 'Terminated')
+                  }}
+                  onRevertTerminated={async (patientId) => {
+                    const fresh = classifyPatient(patient)
+                    await setClassificationStatus(patientId, fresh.status)
+                  }}
                   onClose={() => setActiveWizard('none')}
                 />
               )}

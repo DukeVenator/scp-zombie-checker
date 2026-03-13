@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  badgeSeverity,
   decodeBadgePayload,
   encodeBadgePayload,
   getBadgeUrl,
@@ -77,6 +78,20 @@ describe('decodeBadgePayload', () => {
     const encoded = encodeBadgePayload(withExportedBy)
     const decoded = decodeBadgePayload(encoded)
     expect(decoded?.exportedBy).toEqual({ callsign: 'MTF-11', agentName: 'Dana Voss' })
+  })
+})
+
+describe('badgeSeverity', () => {
+  it('returns terminated when status is Terminated', () => {
+    expect(badgeSeverity({ ...minimalPayload, status: 'Terminated' })).toBe('terminated')
+  })
+
+  it('returns cleared for Cleared low-risk payload', () => {
+    expect(badgeSeverity(minimalPayload)).toBe('cleared')
+  })
+
+  it('returns critical for Critical status', () => {
+    expect(badgeSeverity({ ...minimalPayload, status: 'Critical' })).toBe('critical')
   })
 })
 

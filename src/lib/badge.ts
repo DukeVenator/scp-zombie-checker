@@ -5,7 +5,10 @@ const HIGH_THREAT_CONTAINMENT = ['Escaped', 'Known Threat']
 const HIGH_THREAT_VARIANT = ['Alpha', 'Gate Breaker']
 
 /** Badge severity: same logic as BadgePage. Used for print fluff and testing page. */
-export function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared' {
+export function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared' | 'terminated' {
+  if (payload.status === 'Terminated') {
+    return 'terminated'
+  }
   if (
     payload.status === 'Critical' ||
     payload.infectionPct >= 70 ||

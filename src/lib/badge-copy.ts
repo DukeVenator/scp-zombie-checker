@@ -82,7 +82,7 @@ const CRITICAL_INFECTION_50 = [
 
 export function getInfectionHumor(
   pct: number,
-  severity?: 'critical' | 'warning' | 'cleared',
+  severity?: 'critical' | 'warning' | 'cleared' | 'terminated',
   seed?: string,
 ): string | null {
   if (pct < 50) return null
@@ -199,7 +199,7 @@ const CRITICAL_CONTAINMENT_DEFAULT = [
 
 export function getContainmentHumor(
   status: string,
-  severity?: 'critical' | 'warning' | 'cleared',
+  severity?: 'critical' | 'warning' | 'cleared' | 'terminated',
   seed?: string,
 ): string | null {
   if (status === 'Normal' && (severity === 'warning' || severity === 'critical')) {
@@ -329,11 +329,35 @@ const CRITICAL_SUSPECTED_STATUS = [
   "Your status has been upgraded. So has our response. Neither is good for you.",
 ]
 
+const TERMINATED_STATUS_LINES = [
+  'Subject terminated. No longer a threat.',
+  'Case closed. No further action required.',
+  'Threat neutralized. File archived.',
+  'Task force reports: we are done here. Literally.',
+  'Containment protocol complete. We ran out of things to contain.',
+  'Subject has been filed under "resolved." Do not reopen.',
+  'The SCP definition of a good day: one less thing on the board.',
+  'Termination paperwork signed in triplicate. We kept a copy.',
+  'Field team says thanks for not making us fill out the escape report.',
+  'No longer a threat. We checked. Twice. Then had coffee.',
+  'Archived. If you need this subject again, submit Form 7-X.',
+  'Case closed. The only thing escalating now is our satisfaction.',
+  'Threat level: zero. Same as our tolerance for follow-ups.',
+  'Subject status: terminated. Our status: relieved.',
+  'Containment successful. By which we mean permanently successful.',
+  'File closed. Do not resuscitate. Do not reassess. Do not call us.',
+  'Mission accomplished. The boring kind. We prefer the boring kind.',
+  'Subject is no longer in the building. Or anywhere. Problem solved.',
+  'Termination complete. Please direct all further inquiries to the shredder.',
+  'We have achieved the only outcome that doesn’t require more paperwork.',
+]
+
 export function getStatusHumor(
   status: string,
-  severity?: 'critical' | 'warning' | 'cleared',
+  severity?: 'critical' | 'warning' | 'cleared' | 'terminated',
   seed?: string,
 ): string | null {
+  if (status === 'Terminated') return pick(TERMINATED_STATUS_LINES, seed)
   if (status === 'Cleared') return null
   if (severity === 'critical') {
     switch (status) {
@@ -364,7 +388,7 @@ export function getStatusHumor(
 
 /* --- Print fluff (dossier + badge print) by severity --- */
 
-export type PrintSeverity = 'critical' | 'warning' | 'cleared'
+export type PrintSeverity = 'critical' | 'warning' | 'cleared' | 'terminated'
 
 const PRINT_FLUFF: Record<PrintSeverity, { classificationLine: string; footerLines: string[] }> = {
   cleared: {
@@ -378,6 +402,10 @@ const PRINT_FLUFF: Record<PrintSeverity, { classificationLine: string; footerLin
   critical: {
     classificationLine: 'EYES ONLY — TERMINATE ON SIGHT AUTHORIZED',
     footerLines: ['Lethal force authorized. Do not duplicate. Destroy when superseded.'],
+  },
+  terminated: {
+    classificationLine: 'SUBJECT TERMINATED — NO LONGER A THREAT',
+    footerLines: ['Case closed. No further action required.', 'Do not duplicate.'],
   },
 }
 

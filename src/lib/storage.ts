@@ -9,6 +9,7 @@ import {
   type HistoryChange,
   type PatientInput,
   type PatientRecord,
+  type PatientStatus,
   type ZombieVariant,
 } from '../types/patient'
 
@@ -56,7 +57,8 @@ export const createPatientRecord = (
   const input = patientInputSchema.parse(rawInput)
   const now = new Date().toISOString()
   const id = existing?.id ?? crypto.randomUUID()
-  const classification = classifyPatient(input)
+  const classification =
+    existing?.classification?.status === 'Terminated' ? existing.classification : classifyPatient(input)
   const changes = existing ? buildChecklistDiff(existing.checklist, input.checklist) : []
   const historyEntry = {
     id: crypto.randomUUID(),
@@ -106,6 +108,71 @@ export const updatePatientStatus = async (
   }
   const updated = patientRecordSchema.parse({
     ...existing,
+    containmentStatus,
+    updatedAt: now,
+    updatedBy: agent,
+    history: [entry, ...existing.history].slice(0, 20),
+  })
+  await db.patients.put(updated)
+  addRecentPatient(id)
+  return updated
+}
+
+const TERMINATED_CLASSIFICATION = {
+  status: 'Terminated' as const,
+  riskScore: 0,
+  summary: 'Subject terminated. No longer a threat.',
+  actions: [] as string[],
+  warnings: [] as { id: string; severity: 'info' | 'warning' | 'critical'; title: string; detail: string; action: string }[],
+}
+
+export const updatePatientClassificationStatus = async (
+  id: string,
+  status: PatientStatus,
+  agent: ReportingAgent,
+): Promise<PatientRecord> => {
+  const existing = await getPatient(id)
+  if (!existing) throw new Error('Patient not found')
+  const now = new Date().toISOString()
+  const prevStatus = existing.classification.status
+  const wasTerminated = prevStatus === 'Terminated' || existing.containmentStatus === 'Terminated'
+  let classification: PatientRecord['classification']
+  let containmentStatus: ContainmentStatus
+  if (status === 'Terminated') {
+    classification = TERMINATED_CLASSIFICATION
+    containmentStatus = 'Terminated'
+  } else {
+    const fresh = classifyPatient({
+      identity: existing.identity,
+      checklist: existing.checklist,
+    })
+    classification = { ...fresh, status }
+    containmentStatus =
+      wasTerminated ? 'Normal' : (existing.containmentStatus ?? 'Normal')
+  }
+  const changes: HistoryChange[] = [
+    { field: 'Classification status', from: prevStatus, to: status },
+    ...(containmentStatus !== (existing.containmentStatus ?? 'Normal')
+      ? [{ field: 'Containment status', from: existing.containmentStatus ?? 'Normal', to: containmentStatus } as HistoryChange]
+      : []),
+  ]
+  const entry = {
+    id: crypto.randomUUID(),
+    recordedAt: now,
+    type: 'status-change' as const,
+    summary:
+      status === 'Terminated'
+        ? `Classification status changed from ${prevStatus} to ${status}. Containment set to Terminated.`
+        : wasTerminated
+          ? `Classification status changed from ${prevStatus} to ${status}. Terminated status removed.`
+          : `Classification status changed from ${prevStatus} to ${status}.`,
+    reportedBy: agent,
+    checklist: existing.checklist,
+    changes,
+  }
+  const updated = patientRecordSchema.parse({
+    ...existing,
+    classification,
     containmentStatus,
     updatedAt: now,
     updatedBy: agent,

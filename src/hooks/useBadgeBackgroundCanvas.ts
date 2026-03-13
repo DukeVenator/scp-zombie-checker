@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export type BadgeSeverity = 'cleared' | 'warning' | 'critical'
+export type BadgeSeverity = 'cleared' | 'warning' | 'critical' | 'terminated'
 
 /** Cleared: gentle green rising particles (soft upward drift). */
 function initClearedParticles(w: number, h: number) {
@@ -50,6 +50,11 @@ function initCriticalSpores(w: number, h: number) {
   }))
 }
 
+/** Terminated: no particle array; we use film-grain noise drawn per frame (see loop). */
+function initTerminatedParticles(_w: number, _h: number) {
+  return []
+}
+
 export function useBadgeBackgroundCanvas(visible: boolean, severity: BadgeSeverity) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const frameRef = useRef<number | undefined>(undefined)
@@ -81,6 +86,8 @@ export function useBadgeBackgroundCanvas(visible: boolean, severity: BadgeSeveri
         lastSeverityRef.current = severity
         if (severity === 'cleared') {
           particlesRef.current = initClearedParticles(w, h)
+        } else if (severity === 'terminated') {
+          particlesRef.current = initTerminatedParticles(w, h)
         } else if (severity === 'warning') {
           particlesRef.current = initWarningParticles(w, h)
         } else {
@@ -129,6 +136,24 @@ export function useBadgeBackgroundCanvas(visible: boolean, severity: BadgeSeveri
             ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
             ctx.fill()
           }
+        } else if (severity === 'terminated') {
+          /* Lightweight B&W archival: dark base + slow drifting scanlines + soft vignette */
+          ctx.fillStyle = 'rgb(14, 14, 14)'
+          ctx.fillRect(0, 0, w, h)
+          const bandCount = 24
+          const bandHeight = 3
+          const drift = (t * 18) % (h + 80)
+          for (let i = 0; i < bandCount; i++) {
+            const y = (i * (h / (bandCount + 1)) + drift) % (h + 60) - 30
+            const alpha = 0.04 + 0.04 * Math.sin(t * 0.6 + i * 0.4)
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+            ctx.fillRect(0, y, w, bandHeight)
+          }
+          const vignette = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.7)
+          vignette.addColorStop(0, 'rgba(0, 0, 0, 0)')
+          vignette.addColorStop(1, 'rgba(0, 0, 0, 0.35)')
+          ctx.fillStyle = vignette
+          ctx.fillRect(0, 0, w, h)
         } else if (severity === 'warning') {
           ctx.fillStyle = 'rgba(18, 16, 10, 0.14)'
           ctx.fillRect(0, 0, w, h)
@@ -225,6 +250,8 @@ export function useBadgeBackgroundCanvas(visible: boolean, severity: BadgeSeveri
         lastSeverityRef.current = severity
         if (severity === 'cleared') {
           particlesRef.current = initClearedParticles(w, h)
+        } else if (severity === 'terminated') {
+          particlesRef.current = initTerminatedParticles(w, h)
         } else if (severity === 'warning') {
           particlesRef.current = initWarningParticles(w, h)
         } else {

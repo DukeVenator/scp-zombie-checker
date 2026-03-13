@@ -13,6 +13,7 @@ import {
   getStatusHumor,
   getSymptomDarkJoke,
 } from '../lib/badge-copy'
+import type { ClassificationResult } from '../types/patient'
 import { useAgentProfile } from '../hooks/useAgentProfile'
 import { useBadgeBackgroundCanvas } from '../hooks/useBadgeBackgroundCanvas'
 import { usePatientStore } from '../hooks/usePatientStore'
@@ -92,6 +93,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
 
   const infectionHumor = getInfectionHumor(payload.infectionPct, severity, payload.id)
   const clearedCongrats = severity === 'cleared' ? getClearedCongrats(payload.id) : null
+  const statusClearForDisplay = statusClear || severity === 'terminated'
   const containmentHumor = payload.containment
     ? getContainmentHumor(payload.containment, severity, payload.id)
     : null
@@ -105,19 +107,19 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
   /* Dossier print (same output as patient detail page) — derived from payload */
   const printItemNumber = `SCP-${payload.id.slice(0, 8).toUpperCase()}`
   const syntheticClassification = useMemo(
-    () => ({
-      status: payload.status,
+    (): ClassificationResult => ({
+      status: payload.status as ClassificationResult['status'],
       riskScore:
         payload.threatLevel === 'Critical' ? 8 : payload.threatLevel === 'Elevated' ? 5 : 2,
       summary: payload.summary,
-      actions: [] as string[],
-      warnings: [] as { id: string; title: string; detail: string; severity: string }[],
+      actions: [],
+      warnings: [],
     }),
     [payload.status, payload.threatLevel, payload.summary],
   )
   const printObjectClass = getObjectClass(
     syntheticClassification,
-    (payload.containment as 'Normal' | 'Contained' | 'Threat' | 'Known Threat' | 'Escaped') ?? undefined,
+    (payload.containment as 'Normal' | 'Contained' | 'Threat' | 'Known Threat' | 'Escaped' | 'Terminated') ?? undefined,
   )
   const containment = payload.containment ?? 'Normal'
   const variant = payload.variant ?? 'Normal'
@@ -129,7 +131,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     ? printContainmentProc.detail
     : 'Standard observation protocols apply. Subject is under routine monitoring.'
   const printContainmentSteps = printContainmentProc?.steps ?? []
-  const terminateOnSight = payload.infectionPct >= 81
+  const terminateOnSight = severity !== 'terminated' && payload.infectionPct >= 81
   const printAddendumHighlight = terminateOnSight
     ? 'Subject is designated for termination on sight. Lethal force is authorized.'
     : null
@@ -162,7 +164,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
 
   return (
     <div
-      className={`badge-page badge-page--severity-${severity} ${entered ? 'badge-page--entered' : ''} ${statusClear ? 'badge-page--status-clear' : ''}`}
+      className={`badge-page badge-page--severity-${severity} ${entered ? 'badge-page--entered' : ''} ${statusClearForDisplay ? 'badge-page--status-clear' : ''}`}
       data-severity={severity}
       data-testid="badge-page"
     >
@@ -178,14 +180,14 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
         <div
           className={`badge-unlock-overlay badge-unlock-overlay--${severity}`}
           aria-live="polite"
-          aria-label={severity === 'cleared' ? 'Status clear verified' : severity === 'warning' ? 'Elevated risk verified' : 'High threat verified'}
+          aria-label={severity === 'cleared' ? 'Status clear verified' : severity === 'warning' ? 'Elevated risk verified' : severity === 'terminated' ? 'Subject terminated. No longer a threat.' : 'High threat verified'}
           data-testid="badge-unlock-overlay"
         >
           <div className="badge-unlock-overlay__modal" data-phase={unlockPhase}>
             <div className="badge-unlock-overlay__icon-wrap">
               {unlockPhase === 'lock' ? (
                 <Lock size={48} strokeWidth={1.8} className="badge-unlock-overlay__icon" aria-hidden />
-              ) : severity === 'cleared' ? (
+              ) : severity === 'cleared' || severity === 'terminated' ? (
                 <ShieldCheck
                   size={48}
                   strokeWidth={1.8}
@@ -213,17 +215,21 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
                 ? 'VERIFYING…'
                 : severity === 'cleared'
                   ? 'STATUS CLEAR'
-                  : severity === 'warning'
-                    ? 'ELEVATED RISK'
-                    : 'HIGH THREAT'}
+                  : severity === 'terminated'
+                    ? 'TERMINATED'
+                    : severity === 'warning'
+                      ? 'ELEVATED RISK'
+                      : 'HIGH THREAT'}
             </p>
             <p className="badge-unlock-overlay__line badge-unlock-overlay__line--highlight">
               {unlockPhase === 'verified'
                 ? severity === 'cleared'
                   ? 'CLEARED — LOW RISK'
-                  : severity === 'warning'
-                    ? 'VERIFY THREAT LEVEL'
-                    : 'CONTAINMENT ALERT'
+                  : severity === 'terminated'
+                    ? 'NO LONGER A THREAT'
+                    : severity === 'warning'
+                      ? 'VERIFY THREAT LEVEL'
+                      : 'CONTAINMENT ALERT'
                 : '…'}
             </p>
           </div>
@@ -237,7 +243,13 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
       >
         <div
           className={`badge-doc__stripe badge-doc__stripe--entry ${
-            severity === 'critical' ? 'badge-doc__stripe--hazard' : severity === 'warning' ? 'badge-doc__stripe--warning' : ''
+            severity === 'critical'
+              ? 'badge-doc__stripe--hazard'
+              : severity === 'terminated'
+                ? 'badge-doc__stripe--terminated'
+                : severity === 'warning'
+                  ? 'badge-doc__stripe--warning'
+                  : ''
           }`.trim()}
           data-testid="badge-doc-stripe"
         >
@@ -246,6 +258,12 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
               <AlertOctagon size={20} aria-hidden />
               <span>CONTAINMENT HAZARD — TERMINATE</span>
               <AlertOctagon size={20} aria-hidden />
+            </>
+          ) : severity === 'terminated' ? (
+            <>
+              <Shield size={20} aria-hidden />
+              <span>SUBJECT TERMINATED — NO LONGER A THREAT</span>
+              <Shield size={20} aria-hidden />
             </>
           ) : (
             <>
@@ -258,13 +276,13 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
 
         <header
           className={`badge-doc__header badge-doc__header--entry ${
-            severity === 'critical' ? 'badge-doc__header--hazard' : ''
+            severity === 'critical' ? 'badge-doc__header--hazard' : severity === 'terminated' ? 'badge-doc__header--terminated' : ''
           }`.trim()}
           data-testid="badge-doc-header"
         >
           <div className="badge-doc__logo">
             <ShieldAlert size={28} />
-            <span>ZOMBIE CHECKER</span>
+            <span>{severity === 'terminated' ? 'SUBJECT TERMINATED' : 'ZOMBIE CHECKER'}</span>
           </div>
           <div className="badge-doc__doc-id">DOC #{payload.id.slice(0, 8).toUpperCase()}</div>
         </header>
@@ -281,17 +299,19 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
                 <div>
                   <dt>Status</dt>
                   <dd>
-                    <span className={`badge badge--${payload.status.toLowerCase()}`}>{payload.status}</span>
+                    <span className={`badge badge--${payload.status.toLowerCase()}`}>
+                      {severity === 'terminated' ? 'SUBJECT TERMINATED' : payload.status}
+                    </span>
                   </dd>
                 </div>
                 <div>
                   <dt>Threat level</dt>
-                  <dd>{payload.threatLevel ?? '—'}</dd>
+                  <dd>{severity === 'terminated' ? '—' : (payload.threatLevel ?? '—')}</dd>
                 </div>
                 <div>
-                  <dt>Infection probability</dt>
-                  <dd className={payload.infectionPct >= 70 ? 'badge-doc__danger' : payload.infectionPct >= 40 ? 'badge-doc__warn' : ''}>
-                    {payload.infectionPct}%
+                  <dt>{severity === 'terminated' ? 'Status' : 'Infection probability'}</dt>
+                  <dd className={severity === 'terminated' ? 'badge-doc__terminated' : payload.infectionPct >= 70 ? 'badge-doc__danger' : payload.infectionPct >= 40 ? 'badge-doc__warn' : ''}>
+                    {severity === 'terminated' ? 'Terminated — No longer a threat' : `${payload.infectionPct}%`}
                   </dd>
                 </div>
                 {payload.containment && payload.containment !== 'Normal' && (
@@ -319,25 +339,33 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
               </dl>
               <p className="badge-doc__summary">{payload.summary}</p>
 
-              {/* Badge-only humour: severity-appropriate only; critical shows hostile termination copy */}
+              {/* Badge-only humour: severity-appropriate only; terminated shows only terminated flavour; critical shows hostile copy */}
               <div className="badge-doc__humor">
-                {clearedCongrats && (
-                  <p className="badge-doc__humor-line badge-doc__humor--cleared">{clearedCongrats}</p>
-                )}
-                {criticalTermination && (
-                  <p className="badge-doc__humor-line badge-doc__humor--critical">{criticalTermination}</p>
-                )}
-                {infectionHumor && (
-                  <p className="badge-doc__humor-line badge-doc__humor--infection">{infectionHumor}</p>
-                )}
-                {containmentHumor && (
-                  <p className="badge-doc__humor-line badge-doc__humor--containment">{containmentHumor}</p>
-                )}
-                {statusHumor && (
-                  <p className="badge-doc__humor-line badge-doc__humor--status">{statusHumor}</p>
-                )}
-                {symptomJoke && severity !== 'critical' && (
-                  <p className="badge-doc__humor-line badge-doc__humor--symptom">{symptomJoke}</p>
+                {severity === 'terminated' ? (
+                  statusHumor && (
+                    <p className="badge-doc__humor-line badge-doc__humor--terminated">{statusHumor}</p>
+                  )
+                ) : (
+                  <>
+                    {clearedCongrats && (
+                      <p className="badge-doc__humor-line badge-doc__humor--cleared">{clearedCongrats}</p>
+                    )}
+                    {criticalTermination && (
+                      <p className="badge-doc__humor-line badge-doc__humor--critical">{criticalTermination}</p>
+                    )}
+                    {infectionHumor && (
+                      <p className="badge-doc__humor-line badge-doc__humor--infection">{infectionHumor}</p>
+                    )}
+                    {containmentHumor && (
+                      <p className="badge-doc__humor-line badge-doc__humor--containment">{containmentHumor}</p>
+                    )}
+                    {statusHumor && (
+                      <p className="badge-doc__humor-line badge-doc__humor--status">{statusHumor}</p>
+                    )}
+                    {symptomJoke && (
+                      <p className="badge-doc__humor-line badge-doc__humor--symptom">{symptomJoke}</p>
+                    )}
+                  </>
                 )}
               </div>
             </div>

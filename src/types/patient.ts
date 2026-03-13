@@ -4,9 +4,9 @@ import { defaultReportingAgent, reportingAgentSchema } from './agent'
 export const sexOptions = ['Female', 'Male', 'Other', 'Unknown'] as const
 export const pupilStates = ['Normal', 'Dilated', 'Constricted', 'Clouded', 'Non-reactive'] as const
 export const emfLevels = ['Low', 'Moderate', 'High', 'Extreme'] as const
-export const patientStatuses = ['Cleared', 'Observation', 'Suspected', 'Contained', 'Critical'] as const
+export const patientStatuses = ['Cleared', 'Observation', 'Suspected', 'Contained', 'Critical', 'Terminated'] as const
 export const warningSeverities = ['info', 'warning', 'critical'] as const
-export const containmentStatuses = ['Normal', 'Contained', 'Threat', 'Known Threat', 'Escaped'] as const
+export const containmentStatuses = ['Normal', 'Contained', 'Threat', 'Known Threat', 'Escaped', 'Terminated'] as const
 export const zombieVariants = ['Normal', 'Walker', 'Runner', 'Alpha', 'Gate Breaker'] as const
 
 export type Sex = (typeof sexOptions)[number]

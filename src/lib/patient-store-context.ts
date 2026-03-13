@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { ContainmentStatus, PatientInput, PatientRecord, ZombieVariant } from '../types/patient'
+import type { ContainmentStatus, PatientInput, PatientRecord, PatientStatus, ZombieVariant } from '../types/patient'
 
 export type PatientStoreContextValue = {
   patients: PatientRecord[]
@@ -11,6 +11,7 @@ export type PatientStoreContextValue = {
   importRecords: (records: PatientRecord[]) => Promise<void>
   clearAllPatients: () => Promise<void>
   setContainmentStatus: (id: string, status: ContainmentStatus) => Promise<PatientRecord>
+  setClassificationStatus: (id: string, status: PatientStatus) => Promise<PatientRecord>
   setVariant: (id: string, variant: ZombieVariant) => Promise<PatientRecord>
 }
 
