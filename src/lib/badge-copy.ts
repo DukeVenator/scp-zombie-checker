@@ -361,3 +361,26 @@ export function getStatusHumor(
       return null
   }
 }
+
+/* --- Print fluff (dossier + badge print) by severity --- */
+
+export type PrintSeverity = 'critical' | 'warning' | 'cleared'
+
+const PRINT_FLUFF: Record<PrintSeverity, { classificationLine: string; footerLines: string[] }> = {
+  cleared: {
+    classificationLine: 'CONFIDENTIAL — ROUTINE',
+    footerLines: ['Distribution: Authorized field personnel only.', 'Do not duplicate.'],
+  },
+  warning: {
+    classificationLine: 'RESTRICTED — ELEVATED RISK',
+    footerLines: ['Handle with care. Do not duplicate. Destroy when superseded.'],
+  },
+  critical: {
+    classificationLine: 'EYES ONLY — TERMINATE ON SIGHT AUTHORIZED',
+    footerLines: ['Lethal force authorized. Do not duplicate. Destroy when superseded.'],
+  },
+}
+
+export function getPrintFluff(severity: PrintSeverity): { classificationLine: string; footerLines: string[] } {
+  return PRINT_FLUFF[severity]
+}

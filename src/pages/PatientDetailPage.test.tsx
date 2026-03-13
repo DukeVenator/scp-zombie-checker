@@ -107,10 +107,10 @@ describe('PatientDetailPage', () => {
       expect(objectClassEl.textContent?.trim()).toMatch(/^(Safe|Euclid|Keter)$/)
     })
 
-    it('print card shows Clearance Level', () => {
+    it('print card shows Clearance Level from agent profile', () => {
       renderPatientDetail(testPatient.id)
 
-      expect(screen.getByTestId('scp-print-clearance')).toHaveTextContent('2')
+      expect(screen.getByTestId('scp-print-clearance')).toHaveTextContent('4')
     })
 
     it('print card shows subject name and classification summary in body', () => {
@@ -119,6 +119,21 @@ describe('PatientDetailPage', () => {
       const card = screen.getByTestId('scp-print-card')
       expect(within(card).getByText(/Print Test Subject/)).toBeInTheDocument()
       expect(within(card).getByText(testPatient.classification.summary)).toBeInTheDocument()
+    })
+
+    it('print card shows severity-based classification line', () => {
+      renderPatientDetail(testPatient.id)
+
+      const el = screen.getByTestId('scp-print-classification')
+      expect(el.textContent).toMatch(/CONFIDENTIAL|RESTRICTED|EYES ONLY/)
+    })
+
+    it('print card footer includes severity-based fluff', () => {
+      renderPatientDetail(testPatient.id)
+
+      const fluff = screen.getByTestId('scp-print-footer-fluff')
+      expect(fluff.textContent).toBeTruthy()
+      expect(fluff.textContent).toMatch(/Distribution|Do not duplicate|Destroy when superseded|Lethal force/i)
     })
   })
 
@@ -135,6 +150,20 @@ describe('PatientDetailPage', () => {
 
       expect(printSpy).toHaveBeenCalledTimes(1)
       printSpy.mockRestore()
+    })
+  })
+
+  describe('Export badge modal', () => {
+    it('shows Exported by with agent callsign and name when profile is set', async () => {
+      const user = userEvent.setup()
+      renderPatientDetail(testPatient.id)
+
+      const exportBtn = screen.getByRole('button', { name: /export badge/i })
+      await user.click(exportBtn)
+
+      expect(screen.getByText('Exported by')).toBeInTheDocument()
+      expect(screen.getByText(/MTF-11/)).toBeInTheDocument()
+      expect(screen.getByText(/Dana Voss/)).toBeInTheDocument()
     })
   })
 })

@@ -68,6 +68,16 @@ describe('decodeBadgePayload', () => {
     const decoded = decodeBadgePayload(encoded)
     expect(decoded).toEqual(full)
   })
+
+  it('round-trips payload with exportedBy', () => {
+    const withExportedBy: BadgePayload = {
+      ...minimalPayload,
+      exportedBy: { callsign: 'MTF-11', agentName: 'Dana Voss' },
+    }
+    const encoded = encodeBadgePayload(withExportedBy)
+    const decoded = decodeBadgePayload(encoded)
+    expect(decoded?.exportedBy).toEqual({ callsign: 'MTF-11', agentName: 'Dana Voss' })
+  })
 })
 
 describe('getBadgeUrl', () => {

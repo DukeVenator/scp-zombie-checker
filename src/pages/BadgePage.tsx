@@ -1,44 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { Shield, ShieldAlert, ShieldCheck, Lock, RefreshCw, AlertTriangle, AlertOctagon } from 'lucide-react'
-import { decodeBadgePayload, getBadgeUrl, type BadgePayload } from '../lib/badge'
+import { Shield, ShieldAlert, ShieldCheck, Lock, RefreshCw, AlertTriangle, AlertOctagon, Printer } from 'lucide-react'
+import { containmentProcedures, getObjectClass } from '../lib/assessment-ui'
+import { badgeSeverity, decodeBadgePayload, getBadgeUrl, type BadgePayload } from '../lib/badge'
 import {
   getClearedCongrats,
   getContainmentHumor,
   getCriticalTerminationCopy,
   getInfectionHumor,
+  getPrintFluff,
   getStatusHumor,
   getSymptomDarkJoke,
 } from '../lib/badge-copy'
+import { useAgentProfile } from '../hooks/useAgentProfile'
 import { useBadgeBackgroundCanvas } from '../hooks/useBadgeBackgroundCanvas'
 import { usePatientStore } from '../hooks/usePatientStore'
-
-const HIGH_THREAT_CONTAINMENT = ['Escaped', 'Known Threat']
-const HIGH_THREAT_VARIANT = ['Alpha', 'Gate Breaker']
-
-function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared' {
-  if (
-    payload.status === 'Critical' ||
-    payload.infectionPct >= 70 ||
-    (payload.containment && HIGH_THREAT_CONTAINMENT.includes(payload.containment)) ||
-    (payload.variant && HIGH_THREAT_VARIANT.includes(payload.variant)) ||
-    payload.threatLevel === 'Critical'
-  ) {
-    return 'critical'
-  }
-  if (
-    ['Suspected', 'Contained', 'Observation'].includes(payload.status) ||
-    (payload.infectionPct >= 40 && payload.infectionPct < 70)
-  ) {
-    return 'warning'
-  }
-  return 'cleared'
-}
 
 const LOADING_MS = 500
 const UNLOCK_DURATION_MS = 2200
 const UNLOCK_PHASE_VERIFIED_MS = 480
+
+/** Symptom labels for dossier print (same order as patient checklist) */
+const DOSSIER_SYMPTOM_LABELS: Record<string, string> = {
+  aggression: 'Aggression',
+  decay: 'Visible decay',
+  incoherentSpeech: 'Incoherent speech',
+  violentResponse: 'Violent response',
+  aversionToLight: 'Aversion to light',
+  abnormalOdor: 'Abnormal odor',
+}
 
 /** Low risk: Cleared status and below 20% infection */
 function isStatusClear(payload: BadgePayload): boolean {
@@ -52,6 +43,7 @@ function isStatusClear(payload: BadgePayload): boolean {
 
 function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: string }) {
   const navigate = useNavigate()
+  const { profile } = useAgentProfile()
   const { patients } = usePatientStore()
   const inStore = useMemo(() => patients.some((p) => p.id === payload.id), [patients, payload.id])
   const severity = useMemo(() => badgeSeverity(payload), [payload])
@@ -108,6 +100,41 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     severity !== 'cleared' && payload.infectionPct >= 50 ? getSymptomDarkJoke(payload.id) : null
   const criticalTermination =
     severity === 'critical' ? getCriticalTerminationCopy(payload.id) : null
+  const printFluff = getPrintFluff(severity)
+
+  /* Dossier print (same output as patient detail page) — derived from payload */
+  const printItemNumber = `SCP-${payload.id.slice(0, 8).toUpperCase()}`
+  const syntheticClassification = useMemo(
+    () => ({
+      status: payload.status,
+      riskScore:
+        payload.threatLevel === 'Critical' ? 8 : payload.threatLevel === 'Elevated' ? 5 : 2,
+      summary: payload.summary,
+      actions: [] as string[],
+      warnings: [] as { id: string; title: string; detail: string; severity: string }[],
+    }),
+    [payload.status, payload.threatLevel, payload.summary],
+  )
+  const printObjectClass = getObjectClass(
+    syntheticClassification,
+    (payload.containment as 'Normal' | 'Contained' | 'Threat' | 'Known Threat' | 'Escaped') ?? undefined,
+  )
+  const containment = payload.containment ?? 'Normal'
+  const variant = payload.variant ?? 'Normal'
+  const printContainmentProc =
+    containment !== 'Normal' && containmentProcedures[containment]
+      ? containmentProcedures[containment]
+      : null
+  const printContainmentParagraph = printContainmentProc
+    ? printContainmentProc.detail
+    : 'Standard observation protocols apply. Subject is under routine monitoring.'
+  const printContainmentSteps = printContainmentProc?.steps ?? []
+  const terminateOnSight = payload.infectionPct >= 81
+  const printAddendumHighlight = terminateOnSight
+    ? 'Subject is designated for termination on sight. Lethal force is authorized.'
+    : null
+  const printClearanceLevel = profile?.clearanceLevel ?? '2'
+  const printSubjectLine = `Subject: ${payload.name}, —, —. Biometrics: —; temperature —; heartbeat —; EMF —. Containment: ${containment}. Variant: ${variant}.`
 
   const badgeCanvasRef = useBadgeBackgroundCanvas(true, severity)
 
@@ -141,6 +168,12 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     >
       {backgroundLayer}
       <div className="badge-page__content">
+      <div className="badge-page__print-bar badge-page__no-print">
+        <button className="ghost-button" onClick={() => window.print()} type="button">
+          <Printer size={18} />
+          Print
+        </button>
+      </div>
       {unlockVisible && (
         <div
           className={`badge-unlock-overlay badge-unlock-overlay--${severity}`}
@@ -203,7 +236,9 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
         data-testid="badge-doc"
       >
         <div
-          className={`badge-doc__stripe badge-doc__stripe--entry ${severity === 'critical' ? 'badge-doc__stripe--hazard' : ''}`}
+          className={`badge-doc__stripe badge-doc__stripe--entry ${
+            severity === 'critical' ? 'badge-doc__stripe--hazard' : severity === 'warning' ? 'badge-doc__stripe--warning' : ''
+          }`.trim()}
           data-testid="badge-doc-stripe"
         >
           {severity === 'critical' ? (
@@ -222,7 +257,9 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
         </div>
 
         <header
-          className={`badge-doc__header badge-doc__header--entry ${severity === 'critical' ? 'badge-doc__header--hazard' : ''}`}
+          className={`badge-doc__header badge-doc__header--entry ${
+            severity === 'critical' ? 'badge-doc__header--hazard' : ''
+          }`.trim()}
           data-testid="badge-doc-header"
         >
           <div className="badge-doc__logo">
@@ -273,6 +310,12 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
                   <dt>Last updated</dt>
                   <dd>{updatedAtFormatted}</dd>
                 </div>
+                {payload.exportedBy && (
+                  <div>
+                    <dt>Exported by</dt>
+                    <dd>{payload.exportedBy.callsign} / {payload.exportedBy.agentName}</dd>
+                  </div>
+                )}
               </dl>
               <p className="badge-doc__summary">{payload.summary}</p>
 
@@ -309,6 +352,9 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
 
         <footer className="badge-doc__footer">
           <span>Secure. Local-first. Re-scan to update.</span>
+          {printFluff.footerLines.length > 0 && (
+            <span className="badge-doc__footer-fluff">{printFluff.footerLines.join(' ')}</span>
+          )}
         </footer>
       </div>
 
@@ -325,6 +371,107 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
           <p className="muted">You have this subject in your SCP Checker. Open to edit or re-assess.</p>
         </div>
       )}
+
+      {/* SCP dossier print card — same output as patient detail page; hidden on screen, shown when printing */}
+      <div className="scp-print-card" aria-hidden="true" data-testid="badge-page-dossier">
+        <div className="scp-print-card__border">
+          {terminateOnSight && (
+            <div className="scp-print__terminate">
+              TERMINATE ON SIGHT — INFECTION {payload.infectionPct}%
+            </div>
+          )}
+
+          <div className="scp-print__classification">{printFluff.classificationLine}</div>
+
+          <header className="scp-print__header">
+            <div className="scp-print__logo-block">
+              <div className="scp-print__logo-text">SCP</div>
+              <div className="scp-print__org">
+                <span>Secure. Contain. Protect.</span>
+              </div>
+              <img src="/icons/scp-icon.svg" alt="" className="scp-print__logo-img" />
+            </div>
+            <dl className="scp-print__meta">
+              <div className="scp-print__meta-row">
+                <dt>Clearance Level</dt>
+                <dd>{printClearanceLevel}</dd>
+              </div>
+              <div className="scp-print__meta-row">
+                <dt>Item #</dt>
+                <dd>{printItemNumber}</dd>
+              </div>
+              <div className="scp-print__meta-row">
+                <dt>Object Class</dt>
+                <dd>{printObjectClass}</dd>
+              </div>
+            </dl>
+          </header>
+
+          <div className="scp-print__body">
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Special Containment Procedures:</h3>
+              <p className="scp-print__paragraph">{printContainmentParagraph}</p>
+              {printContainmentSteps.length > 0 && (
+                <ul className="scp-print__dash-list">
+                  {printContainmentSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Description:</h3>
+              <p className="scp-print__paragraph">{payload.summary}</p>
+              <p className="scp-print__subject-id">{printSubjectLine}</p>
+            </section>
+
+            <section className="scp-print__section">
+              <h3 className="scp-print__section-title">Symptoms of infection with {printItemNumber} include:</h3>
+              <ul className="scp-print__dash-list">
+                {Object.entries(DOSSIER_SYMPTOM_LABELS).map(([key, label]) => (
+                  <li key={key}>{label} (not observed)</li>
+                ))}
+                {payload.infectionPct >= 70 && (
+                  <li>
+                    <span className="scp-print__highlight">
+                      Subject will attempt to ingest living humans if physical contact is made.
+                    </span>
+                  </li>
+                )}
+              </ul>
+            </section>
+
+            {printAddendumHighlight && (
+              <section className="scp-print__section">
+                <h3 className="scp-print__section-title">Addendum:</h3>
+                <p className="scp-print__paragraph">
+                  <span className="scp-print__highlight">{printAddendumHighlight}</span>
+                </p>
+              </section>
+            )}
+          </div>
+
+          <footer className="scp-print__footer">
+            <img src="/icons/scp-icon.svg" alt="" className="scp-print__footer-logo" />
+            <div className="scp-print__footer-center">
+              <div className="scp-print__footer-confidential">CONFIDENTIAL!</div>
+              <p className="scp-print__footer-disclaimer">
+                This document may not be shared with or used by personnel below the designated clearance level.
+              </p>
+              {printFluff.footerLines.length > 0 && (
+                <p className="scp-print__footer-fluff">{printFluff.footerLines.join(' ')}</p>
+              )}
+            </div>
+            <div className="scp-print__footer-meta">
+              {payload.exportedBy && (
+                <span>Exported by: {payload.exportedBy.callsign} / {payload.exportedBy.agentName}</span>
+              )}
+              <span>Printed: {new Date().toLocaleString()}</span>
+            </div>
+          </footer>
+        </div>
+      </div>
       </div>
     </div>
   )

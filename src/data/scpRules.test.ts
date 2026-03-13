@@ -40,12 +40,41 @@ describe('classifyPatient', () => {
     const result = classifyPatient(input)
     expect(result.warnings.some((w) => w.id === 'temperature-high')).toBe(true)
   })
+
+  it('marks status as Suspected (potential threat) when infection probability is above 40%', () => {
+    const input = defaultPatientInput()
+    input.checklist.symptoms.aggression = true
+    input.checklist.symptoms.decay = true
+    input.checklist.symptoms.violentResponse = true
+    input.checklist.symptoms.incoherentSpeech = true
+    expect(calculateInfectionProbability(input.checklist)).toBeGreaterThan(40)
+    const result = classifyPatient(input)
+    expect(result.status).toBe('Suspected')
+    expect(result.summary).toMatch(/potential threat|40%/)
+  })
 })
 
 describe('calculateInfectionProbability', () => {
   it('returns 0% for a healthy baseline', () => {
     const input = defaultPatientInput()
     expect(calculateInfectionProbability(input.checklist)).toBe(0)
+  })
+
+  it('weights symptoms heavily: one symptom gives at least 10%', () => {
+    const input = defaultPatientInput()
+    input.checklist.symptoms.aggression = true
+    const pct = calculateInfectionProbability(input.checklist)
+    expect(pct).toBeGreaterThanOrEqual(10)
+  })
+
+  it('weights symptoms heavily: four symptoms give above 40%', () => {
+    const input = defaultPatientInput()
+    input.checklist.symptoms.aggression = true
+    input.checklist.symptoms.decay = true
+    input.checklist.symptoms.violentResponse = true
+    input.checklist.symptoms.incoherentSpeech = true
+    const pct = calculateInfectionProbability(input.checklist)
+    expect(pct).toBeGreaterThan(40)
   })
 
   it('returns high percentage for full zombie profile', () => {

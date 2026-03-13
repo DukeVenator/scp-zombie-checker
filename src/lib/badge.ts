@@ -1,6 +1,29 @@
 import type { PatientRecord } from '../types/patient'
 import { calculateInfectionProbability } from './assessment-ui'
 
+const HIGH_THREAT_CONTAINMENT = ['Escaped', 'Known Threat']
+const HIGH_THREAT_VARIANT = ['Alpha', 'Gate Breaker']
+
+/** Badge severity: same logic as BadgePage. Used for print fluff and testing page. */
+export function badgeSeverity(payload: BadgePayload): 'critical' | 'warning' | 'cleared' {
+  if (
+    payload.status === 'Critical' ||
+    payload.infectionPct >= 70 ||
+    (payload.containment && HIGH_THREAT_CONTAINMENT.includes(payload.containment)) ||
+    (payload.variant && HIGH_THREAT_VARIANT.includes(payload.variant)) ||
+    payload.threatLevel === 'Critical'
+  ) {
+    return 'critical'
+  }
+  if (
+    ['Suspected', 'Contained', 'Observation'].includes(payload.status) ||
+    (payload.infectionPct >= 40 && payload.infectionPct < 70)
+  ) {
+    return 'warning'
+  }
+  return 'cleared'
+}
+
 export interface BadgePayload {
   id: string
   name: string
@@ -11,6 +34,8 @@ export interface BadgePayload {
   containment?: string
   variant?: string
   threatLevel?: string
+  /** Agent who last exported/accessed this badge (set when copying link or opening export) */
+  exportedBy?: { callsign: string; agentName: string }
 }
 
 const BADGE_VERSION = 1
@@ -63,7 +88,19 @@ export function decodeBadgePayload(encoded: string): BadgePayload | null {
   if (!encoded?.trim()) return null
   try {
     const raw = base64UrlDecode(encoded.trim())
-    const parsed = JSON.parse(raw) as { v?: number; id: string; name: string; status: string; infectionPct: number; updatedAt: string; summary: string; containment?: string; variant?: string; threatLevel?: string }
+    const parsed = JSON.parse(raw) as {
+      v?: number
+      id: string
+      name: string
+      status: string
+      infectionPct: number
+      updatedAt: string
+      summary: string
+      containment?: string
+      variant?: string
+      threatLevel?: string
+      exportedBy?: { callsign: string; agentName: string }
+    }
     if (parsed.v !== BADGE_VERSION || !parsed.id || !parsed.name) return null
     return {
       id: parsed.id,
@@ -75,6 +112,7 @@ export function decodeBadgePayload(encoded: string): BadgePayload | null {
       containment: parsed.containment,
       variant: parsed.variant,
       threatLevel: parsed.threatLevel,
+      exportedBy: parsed.exportedBy,
     }
   } catch {
     return null

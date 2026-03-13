@@ -154,7 +154,8 @@ export const buildAssessmentDirectives = (checklist: ZombieChecklist): Assessmen
 
 export const calculateInfectionProbability = (checklist: ZombieChecklist): number => {
   let score = 0
-  const MAX = 27
+  /* Base scale; symptoms are weighted heavily (4 pts each) so any symptom raises risk % more */
+  const MAX = 35
 
   if (!checklist.heartbeatDetected || checklist.heartbeatBpm === 0) score += 6
   else if (checklist.heartbeatBpm < 40 || checklist.heartbeatBpm > 140) score += 2
@@ -170,7 +171,7 @@ export const calculateInfectionProbability = (checklist: ZombieChecklist): numbe
   else if (checklist.emfLevel === 'High') score += 2
 
   const activeSymptoms = Object.values(checklist.symptoms).filter(Boolean).length
-  score += activeSymptoms * 1.5
+  score += activeSymptoms * 4
 
   if (
     (!checklist.heartbeatDetected || checklist.heartbeatBpm === 0) &&

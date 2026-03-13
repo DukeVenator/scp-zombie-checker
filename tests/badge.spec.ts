@@ -11,6 +11,7 @@ function encodeBadgeParam(payload: {
   containment?: string
   variant?: string
   threatLevel?: string
+  exportedBy?: { callsign: string; agentName: string }
 }): string {
   const blob = JSON.stringify({ v: 1, ...payload })
   return Buffer.from(blob, 'utf-8')
@@ -69,6 +70,24 @@ test('badge page with valid payload shows document content', async ({ page }) =>
   await expect(page.getByText('Low anomaly. Standard observation.')).toBeVisible()
   await expect(page.getByText('Scan to view or update this record')).toBeVisible()
   await expect(page.locator('.badge-doc__qr-wrap')).toBeVisible()
+})
+
+test('badge page shows Exported by when payload includes exportedBy', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Cleared',
+    infectionPct: 25,
+    containment: 'Normal',
+    variant: 'Normal',
+    threatLevel: 'Low',
+    exportedBy: { callsign: 'MTF-11', agentName: 'Dana Voss' },
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText('Exported by')).toBeVisible()
+  await expect(page.getByText(/MTF-11/)).toBeVisible()
+  await expect(page.getByText(/Dana Voss/)).toBeVisible()
 })
 
 test('badge page at mobile viewport shows stacked layout with subject info and QR visible', async ({ page }) => {

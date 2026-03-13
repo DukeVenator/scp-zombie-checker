@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AgentOnboarding } from './components/onboarding/AgentOnboarding'
+import { PwaUpdateHandler } from './components/PwaUpdateHandler'
 import { StartupAnimation } from './components/StartupAnimation'
 import { WelcomeBackUnlock } from './components/WelcomeBackUnlock'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -19,12 +20,16 @@ const ImportExportPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })),
 )
+const TestingPrintsPage = lazy(() =>
+  import('./pages/TestingPrintsPage').then((module) => ({ default: module.TestingPrintsPage })),
+)
 
 function App() {
   return (
     <ErrorBoundary section="SCP Zombie Checker">
       <Suspense fallback={<div className="panel">Loading interface...</div>}>
         <>
+          <PwaUpdateHandler />
           <StartupAnimation />
           <WelcomeBackUnlock />
           <Routes>
@@ -33,6 +38,14 @@ function App() {
               element={
                 <ErrorBoundary section="Patient check">
                   <BadgePage />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/testing/prints"
+              element={
+                <ErrorBoundary section="Print testing">
+                  <TestingPrintsPage />
                 </ErrorBoundary>
               }
             />

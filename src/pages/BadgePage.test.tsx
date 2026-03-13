@@ -1,5 +1,6 @@
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BadgePage } from './BadgePage'
 import { encodeBadgePayload } from '../lib/badge'
@@ -32,6 +33,22 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 vi.mock('../hooks/usePatientStore', () => ({
   usePatientStore: () => ({ patients: [] }),
+}))
+
+vi.mock('../hooks/useAgentProfile', () => ({
+  useAgentProfile: () => ({
+    profile: {
+      agentName: 'Test Agent',
+      callsign: 'MTF-TEST',
+      taskForceUnit: 'MTF Nu-7 (Hammer Down)',
+      clearanceLevel: '3',
+    },
+    openSetup: vi.fn(),
+    closeSetup: vi.fn(),
+    completeSetup: vi.fn(),
+    isReady: true,
+    showSetup: false,
+  }),
 }))
 
 function renderBadgePage(initialSearch = '') {
@@ -158,5 +175,75 @@ describe('BadgePage', () => {
     )
     expect(screen.getByTestId('badge-doc-header')).toHaveClass('badge-doc__header--entry')
     expect(screen.getByTestId('badge-doc-body')).toHaveClass('badge-doc__body--entry')
+  })
+
+  it('shows Print button and calls window.print when clicked', async () => {
+    const d = encodeBadgePayload(basePayload)
+    renderBadgePage(`d=${d}`)
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Loading document…')).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
+
+    const printBtn = screen.getByRole('button', { name: /print/i })
+    expect(printBtn).toBeInTheDocument()
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+    await userEvent.click(printBtn)
+    expect(printSpy).toHaveBeenCalledTimes(1)
+    printSpy.mockRestore()
+  })
+
+  it('renders hidden dossier (badge-page-dossier) for print when payload is valid', async () => {
+    const d = encodeBadgePayload(basePayload)
+    renderBadgePage(`d=${d}`)
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Loading document…')).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
+
+    const dossier = screen.getByTestId('badge-page-dossier')
+    expect(dossier).toBeInTheDocument()
+    expect(dossier).toHaveAttribute('aria-hidden', 'true')
+    expect(within(dossier).getByText(/Unit Test Subject/)).toBeInTheDocument()
+    expect(within(dossier).getByText(/Special Containment Procedures/)).toBeInTheDocument()
+  })
+
+  it('shows Exported by in doc when payload has exportedBy', async () => {
+    const d = encodeBadgePayload({
+      ...basePayload,
+      exportedBy: { callsign: 'MTF-11', agentName: 'Dana Voss' },
+    })
+    renderBadgePage(`d=${d}`)
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Loading document…')).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
+
+    expect(screen.getByText('Exported by')).toBeInTheDocument()
+    expect(screen.getAllByText(/MTF-11/).length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText(/Dana Voss/).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('does not show Exported by when payload has no exportedBy', async () => {
+    const d = encodeBadgePayload(basePayload)
+    renderBadgePage(`d=${d}`)
+
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Loading document…')).not.toBeInTheDocument()
+      },
+      { timeout: 2000 },
+    )
+
+    expect(screen.queryByText('Exported by')).not.toBeInTheDocument()
   })
 })

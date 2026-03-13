@@ -21,17 +21,20 @@ import {
   symptomWarnings,
   variantWarnings,
 } from '../lib/assessment-ui'
-import { badgePayloadFromRecord, getBadgeUrl } from '../lib/badge'
+import { badgePayloadFromRecord, badgeSeverity, getBadgeUrl, type BadgePayload } from '../lib/badge'
 import {
   getClearedCongrats,
   getContainmentHumor,
+  getCriticalTerminationCopy,
   getInfectionHumor,
+  getPrintFluff,
   getStatusHumor,
   getSymptomDarkJoke,
 } from '../lib/badge-copy'
 import { buildSinglePatientPayload, downloadJson, exportFileName } from '../lib/export'
 import { addRecentPatient } from '../lib/storage'
 import { defaultReportingAgent } from '../types/agent'
+import { useAgentProfile } from '../hooks/useAgentProfile'
 import { usePatientStore } from '../hooks/usePatientStore'
 import type { PatientWarning } from '../types/patient'
 
@@ -96,6 +99,7 @@ const containmentBadgeClass = (status: string) => {
 export const PatientDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { profile } = useAgentProfile()
   const { patients, removePatient, upsertPatient, setContainmentStatus, setVariant } = usePatientStore()
   const { pushToast } = useToast()
   const [activeWizard, setActiveWizard] = useState<ActiveWizard>('none')
@@ -131,6 +135,10 @@ export const PatientDetailPage = () => {
     return tags
   }, [patient])
 
+  const printPayload = useMemo(() => (patient ? badgePayloadFromRecord(patient) : null), [patient])
+  const printSeverity = useMemo(() => (printPayload ? badgeSeverity(printPayload) : 'cleared'), [printPayload])
+  const printFluff = useMemo(() => getPrintFluff(printSeverity), [printSeverity])
+
   if (!patient) {
     return (
       <div className="panel">
@@ -157,7 +165,7 @@ export const PatientDetailPage = () => {
   /* Print document fields (SCP dossier style) */
   const printItemNumber = `SCP-${patient.id.slice(0, 8).toUpperCase()}`
   const printObjectClass = getObjectClass(classification, patient.containmentStatus ?? undefined)
-  const printClearanceLevel = '2'
+  const printClearanceLevel = profile?.clearanceLevel ?? '2'
   const printContainmentProc = containment !== 'Normal' && containmentProcedures[containment]
     ? containmentProcedures[containment]
     : null
@@ -677,15 +685,23 @@ export const PatientDetailPage = () => {
           {showBadgeModal &&
             createPortal(
               (() => {
-                const badgePayload = badgePayloadFromRecord(patient)
+                const badgePayload: BadgePayload = {
+                  ...badgePayloadFromRecord(patient),
+                  ...(profile && {
+                    exportedBy: { callsign: profile.callsign, agentName: profile.agentName },
+                  }),
+                }
                 const badgeUrl = getBadgeUrl(badgePayload)
+                const severity = badgeSeverity(badgePayload)
+                const badgePrintFluff = getPrintFluff(severity)
                 const updatedAtFormatted = new Date(badgePayload.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-                const infectionHumor = getInfectionHumor(badgePayload.infectionPct)
+                const infectionHumor = getInfectionHumor(badgePayload.infectionPct, severity, badgePayload.id)
                 const isClearedNormal = badgePayload.status === 'Cleared' && (badgePayload.containment === 'Normal' || !badgePayload.containment)
-                const clearedCongrats = isClearedNormal ? getClearedCongrats() : null
-                const containmentHumor = badgePayload.containment ? getContainmentHumor(badgePayload.containment) : null
-                const statusHumor = getStatusHumor(badgePayload.status)
+                const clearedCongrats = isClearedNormal ? getClearedCongrats(badgePayload.id) : null
+                const containmentHumor = badgePayload.containment ? getContainmentHumor(badgePayload.containment, severity, badgePayload.id) : null
+                const statusHumor = getStatusHumor(badgePayload.status, severity, badgePayload.id)
                 const symptomJoke = !isClearedNormal && badgePayload.infectionPct >= 50 ? getSymptomDarkJoke(badgePayload.id) : null
+                const criticalTermination = severity === 'critical' ? getCriticalTerminationCopy(badgePayload.id) : null
                 return (
                   <div className="fullscreen-modal badge-print-modal" role="dialog" aria-modal="true" aria-label="Export patient badge">
                     <div className="fullscreen-modal__bar badge-print-modal__no-print">
@@ -714,10 +730,10 @@ export const PatientDetailPage = () => {
                       </button>
                     </div>
                     <div className="fullscreen-modal__body">
-                      <div className="badge-doc badge-doc--print">
+                      <div className={`badge-doc badge-doc--print badge-doc--print-${severity}`}>
                         <div className="badge-doc__stripe">
                           <Shield size={20} />
-                          <span>SCP FIELD INTAKE — SUBJECT CHECK</span>
+                          <span>SCP FIELD INTAKE — SUBJECT CHECK — {badgePrintFluff.classificationLine}</span>
                           <Shield size={20} />
                         </div>
                         <header className="badge-doc__header">
@@ -739,14 +755,18 @@ export const PatientDetailPage = () => {
                                 {badgePayload.containment && badgePayload.containment !== 'Normal' && <div><dt>Containment</dt><dd>{badgePayload.containment}</dd></div>}
                                 {badgePayload.variant && badgePayload.variant !== 'Normal' && <div><dt>Variant</dt><dd>{badgePayload.variant}</dd></div>}
                                 <div><dt>Last updated</dt><dd>{updatedAtFormatted}</dd></div>
+                                {badgePayload.exportedBy && (
+                                  <div><dt>Exported by</dt><dd>{badgePayload.exportedBy.callsign} / {badgePayload.exportedBy.agentName}</dd></div>
+                                )}
                               </dl>
                               <p className="badge-doc__summary">{badgePayload.summary}</p>
                               <div className="badge-doc__humor">
                                 {clearedCongrats && <p className="badge-doc__humor-line badge-doc__humor--cleared">{clearedCongrats}</p>}
+                                {criticalTermination && <p className="badge-doc__humor-line badge-doc__humor--critical">{criticalTermination}</p>}
                                 {infectionHumor && <p className="badge-doc__humor-line badge-doc__humor--infection">{infectionHumor}</p>}
                                 {containmentHumor && <p className="badge-doc__humor-line badge-doc__humor--containment">{containmentHumor}</p>}
                                 {statusHumor && <p className="badge-doc__humor-line badge-doc__humor--status">{statusHumor}</p>}
-                                {symptomJoke && <p className="badge-doc__humor-line badge-doc__humor--symptom">{symptomJoke}</p>}
+                                {symptomJoke && severity !== 'critical' && <p className="badge-doc__humor-line badge-doc__humor--symptom">{symptomJoke}</p>}
                               </div>
                             </div>
                             <div className="badge-doc__col badge-doc__col--qr">
@@ -759,6 +779,9 @@ export const PatientDetailPage = () => {
                         </div>
                         <footer className="badge-doc__footer">
                           <span>Secure. Local-first. Re-scan to update.</span>
+                          {badgePrintFluff.footerLines.length > 0 && (
+                            <span className="badge-doc__footer-fluff">{badgePrintFluff.footerLines.join(' ')}</span>
+                          )}
                         </footer>
                       </div>
                     </div>
@@ -820,6 +843,10 @@ export const PatientDetailPage = () => {
               TERMINATE ON SIGHT — INFECTION {infectionPct}%
             </div>
           )}
+
+          <div className="scp-print__classification" data-testid="scp-print-classification">
+            {printFluff.classificationLine}
+          </div>
 
           <header className="scp-print__header">
             <div className="scp-print__logo-block">
@@ -899,6 +926,11 @@ export const PatientDetailPage = () => {
             <div className="scp-print__footer-center">
               <div className="scp-print__footer-confidential">CONFIDENTIAL!</div>
               <p className="scp-print__footer-disclaimer">This document may not be shared with or used by personnel below the designated clearance level.</p>
+              {printFluff.footerLines.length > 0 && (
+                <p className="scp-print__footer-fluff" data-testid="scp-print-footer-fluff">
+                  {printFluff.footerLines.join(' ')}
+                </p>
+              )}
             </div>
             <div className="scp-print__footer-meta">
               <span>Reporting agent: {updatedBy.callsign} / {updatedBy.agentName}</span>

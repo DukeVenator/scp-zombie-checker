@@ -1,3 +1,4 @@
+import { calculateInfectionProbability } from '../lib/assessment-ui'
 import {
   type ClassificationResult,
   type PatientInput,
@@ -197,6 +198,12 @@ export const classifyPatient = (patient: PatientLike): ClassificationResult => {
   } else if (riskScore >= 2) {
     status = 'Observation'
     summary = 'Moderate irregularities present. Keep the patient under observation.'
+  }
+
+  const infectionPct = calculateInfectionProbability(checklist)
+  if (infectionPct > 40 && (status === 'Cleared' || status === 'Observation')) {
+    status = 'Suspected'
+    summary = 'Infection probability above 40%. Subject marked as potential threat. Escalate for focused observation.'
   }
 
   if (warnings.length === 0) {
