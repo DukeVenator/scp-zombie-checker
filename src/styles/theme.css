@@ -169,6 +169,32 @@ p {
   border-bottom: none;
 }
 
+.settings-action--toggle .toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.settings-action--toggle .toggle-label input[type="checkbox"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: var(--accent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .settings-action strong {
   display: block;
   margin-bottom: 0.25rem;
@@ -1835,7 +1861,6 @@ fieldset {
 .badge-page {
   position: relative;
   min-height: 100vh;
-  padding: 1.5rem 1rem 2rem;
   background: var(--bg);
   display: flex;
   flex-direction: column;
@@ -1844,16 +1869,139 @@ fieldset {
 
 .badge-page--error {
   justify-content: center;
+  padding: 1.5rem 1rem 2rem;
 }
 
-/* Page-level entry: fade/slide in when badge-page--entered is set */
+/* Background layer: canvas + vignette + scanlines (behind all badge content) */
+.badge-page__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.badge-page__bg-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.badge-page__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.badge-page__vignette--cleared {
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 35%,
+    rgba(0, 0, 0, 0.25) 75%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.badge-page__vignette--warning {
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 35%,
+    rgba(20, 18, 8, 0.3) 75%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+.badge-page__vignette--critical {
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 30%,
+    rgba(30, 0, 0, 0.4) 70%,
+    rgba(0, 0, 0, 0.75) 100%
+  );
+}
+
+.badge-page__scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+}
+
+.badge-page__scanlines--cleared {
+  animation: badgeScanlines 0.1s linear infinite;
+}
+
+.badge-page__scanlines--warning {
+  animation: badgeScanlines 0.14s linear infinite;
+  opacity: 0.9;
+}
+
+.badge-page__scanlines--critical {
+  animation: badgeScanlines 0.08s linear infinite;
+  opacity: 0.85;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(40, 0, 0, 0.2) 2px,
+    rgba(40, 0, 0, 0.2) 4px
+  );
+}
+
+@keyframes badgeScanlines {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-page__scanlines--cleared,
+  .badge-page__scanlines--warning,
+  .badge-page__scanlines--critical {
+    animation: none;
+    opacity: 0.25;
+  }
+}
+
+.badge-page__content {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem 2rem;
+  box-sizing: border-box;
+}
+
+/* Page-level entry: severity-specific intro when badge-page--entered is set */
 .badge-page:not(.badge-page--entered) {
   opacity: 0;
   transform: translateY(8px);
 }
 
-.badge-page.badge-page--entered {
-  animation: badgePageReveal 0.35s ease both;
+.badge-page.badge-page--entered.badge-page--severity-cleared {
+  animation: badgePageRevealCleared 0.5s ease both;
+}
+
+.badge-page.badge-page--entered.badge-page--severity-warning {
+  animation: badgePageRevealWarning 0.45s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.badge-page.badge-page--entered.badge-page--severity-critical {
+  animation: badgePageRevealCritical 0.4s ease both;
 }
 
 .badge-page__loading {
@@ -1930,12 +2078,27 @@ fieldset {
   letter-spacing: 0.12em;
 }
 
+.badge-doc__stripe--hazard {
+  background: linear-gradient(90deg, #2a0a0a 0%, #4a1414 50%, #2a0a0a 100%);
+  border-bottom-color: rgba(214, 90, 90, 0.5);
+  color: #f0c0c0;
+  letter-spacing: 0.14em;
+}
+
 .badge-doc__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.2rem;
   border-bottom: 1px solid var(--border);
+}
+
+.badge-doc__header--hazard {
+  border-bottom-color: rgba(214, 90, 90, 0.35);
+}
+
+.badge-doc__header--hazard .badge-doc__logo {
+  color: #e08080;
 }
 
 .badge-doc__logo {
@@ -2087,6 +2250,13 @@ fieldset {
   color: #c0a0a0;
 }
 
+.badge-doc__humor--critical {
+  color: #e8a0a0;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .badge-doc__footer {
   padding: 0.6rem 1.2rem;
   border-top: 1px solid var(--border);
@@ -2105,16 +2275,34 @@ fieldset {
   transform: translateY(12px);
 }
 
-.badge-page--entered .badge-doc__stripe--entry {
+.badge-page--entered.badge-page--severity-cleared .badge-doc__stripe--entry {
   animation: badgeEntryReveal 0.4s ease both;
 }
-
-.badge-page--entered .badge-doc__header--entry {
+.badge-page--entered.badge-page--severity-cleared .badge-doc__header--entry {
   animation: badgeEntryReveal 0.4s ease 0.12s both;
 }
-
-.badge-page--entered .badge-doc__body--entry {
+.badge-page--entered.badge-page--severity-cleared .badge-doc__body--entry {
   animation: badgeEntryReveal 0.45s ease 0.24s both;
+}
+
+.badge-page--entered.badge-page--severity-warning .badge-doc__stripe--entry {
+  animation: badgeEntryRevealSlide 0.35s ease both;
+}
+.badge-page--entered.badge-page--severity-warning .badge-doc__header--entry {
+  animation: badgeEntryRevealSlide 0.35s ease 0.1s both;
+}
+.badge-page--entered.badge-page--severity-warning .badge-doc__body--entry {
+  animation: badgeEntryRevealSlide 0.4s ease 0.2s both;
+}
+
+.badge-page--entered.badge-page--severity-critical .badge-doc__stripe--entry {
+  animation: badgeEntryRevealCritical 0.3s ease both;
+}
+.badge-page--entered.badge-page--severity-critical .badge-doc__header--entry {
+  animation: badgeEntryRevealCritical 0.3s ease 0.08s both;
+}
+.badge-page--entered.badge-page--severity-critical .badge-doc__body--entry {
+  animation: badgeEntryRevealCritical 0.35s ease 0.16s both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2122,7 +2310,10 @@ fieldset {
     opacity: 1;
     transform: none;
   }
-  .badge-page.badge-page--entered {
+  .badge-page.badge-page--entered,
+  .badge-page.badge-page--entered.badge-page--severity-cleared,
+  .badge-page.badge-page--entered.badge-page--severity-warning,
+  .badge-page.badge-page--entered.badge-page--severity-critical {
     animation: none;
   }
   .badge-page:not(.badge-page--entered) .badge-doc__stripe--entry,
@@ -2138,10 +2329,62 @@ fieldset {
   }
 }
 
-@keyframes badgePageReveal {
+@keyframes badgePageRevealCleared {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes badgePageRevealWarning {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes badgePageRevealCritical {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(2px) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes badgeEntryRevealCritical {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes badgeEntryRevealSlide {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -2269,8 +2512,19 @@ fieldset {
   place-items: center;
   padding: 1.5rem;
   background: rgba(0, 0, 0, 0.75);
-  animation: badgeUnlockOverlayIn 280ms ease both;
   pointer-events: none;
+}
+
+.badge-unlock-overlay--cleared {
+  animation: badgeUnlockOverlayCleared 320ms ease both;
+}
+
+.badge-unlock-overlay--warning {
+  animation: badgeUnlockOverlayWarning 300ms ease both;
+}
+
+.badge-unlock-overlay--critical {
+  animation: badgeUnlockOverlayCritical 260ms ease both;
 }
 
 .badge-unlock-overlay__modal {
@@ -2281,7 +2535,18 @@ fieldset {
   padding: 1.75rem 2rem;
   min-width: min(280px, 100%);
   border-radius: 20px;
-  animation: badgeUnlockModalPop 380ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.badge-unlock-overlay--cleared .badge-unlock-overlay__modal {
+  animation: badgeUnlockModalCleared 400ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.badge-unlock-overlay--warning .badge-unlock-overlay__modal {
+  animation: badgeUnlockModalWarning 380ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.badge-unlock-overlay--critical .badge-unlock-overlay__modal {
+  animation: badgeUnlockModalCritical 340ms cubic-bezier(0.28, 1.1, 0.64, 1) both;
 }
 
 /* Cleared: green */
@@ -2398,11 +2663,14 @@ fieldset {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .badge-unlock-overlay {
+  .badge-unlock-overlay,
+  .badge-unlock-overlay--cleared,
+  .badge-unlock-overlay--warning,
+  .badge-unlock-overlay--critical {
     animation-duration: 120ms;
   }
   .badge-unlock-overlay__modal {
-    animation: none;
+    animation: none !important;
   }
   .badge-unlock-overlay__icon--verified {
     animation: none;
@@ -2417,19 +2685,56 @@ fieldset {
   }
 }
 
-@keyframes badgeUnlockOverlayIn {
+@keyframes badgeUnlockOverlayCleared {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes badgeUnlockOverlayWarning {
   from {
     opacity: 0;
+    background-color: rgba(0, 0, 0, 0.5);
   }
   to {
     opacity: 1;
+    background-color: rgba(0, 0, 0, 0.75);
   }
 }
 
-@keyframes badgeUnlockModalPop {
+@keyframes badgeUnlockOverlayCritical {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes badgeUnlockModalCleared {
   from {
     opacity: 0;
-    transform: scale(0.94) translateY(10px);
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes badgeUnlockModalWarning {
+  from {
+    opacity: 0;
+    transform: translate(12px, 8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes badgeUnlockModalCritical {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(6px);
+  }
+  70% {
+    transform: scale(1.02) translateY(-1px);
   }
   to {
     opacity: 1;
@@ -2772,21 +3077,56 @@ fieldset {
   --error-border: rgba(214, 90, 90, 0.38);
 }
 
-/* Startup animation: secure terminal boot, runs once per session */
+/* Startup animation: secure terminal boot, runs once per session. Must sit above all overlays (onboarding is 80, welcome is 150). */
 .startup-screen {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 10000;
   display: grid;
   place-items: center;
-  background: var(--bg);
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, rgba(12, 24, 18, 0.98), var(--bg));
   animation: startupFadeOut 500ms ease 3200ms forwards;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.startup-screen--tap-sound {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.startup-screen__tap-sound {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.startup-screen__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.startup-screen__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.4) 80%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
   pointer-events: none;
 }
 
 .startup-screen__scanlines {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background: repeating-linear-gradient(
     0deg,
     transparent,
@@ -2802,6 +3142,9 @@ fieldset {
     animation: none;
     opacity: 0.3;
   }
+  .startup-screen__title--glitch {
+    animation: none;
+  }
   .startup-screen {
     animation-duration: 200ms;
     animation-delay: 1200ms;
@@ -2810,7 +3153,7 @@ fieldset {
 
 .startup-screen__content {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   gap: 1.25rem;
   place-items: center;
@@ -2837,6 +3180,33 @@ fieldset {
   letter-spacing: 0.2em;
   color: rgba(255, 255, 255, 0.85);
   text-transform: uppercase;
+}
+
+.startup-screen__title--glitch {
+  animation: startupGlitch 0.4s ease-in-out 2;
+}
+
+@keyframes startupGlitch {
+  0%, 100% {
+    transform: translate(0, 0);
+    text-shadow: 0 0 0 transparent, 0 0 0 transparent;
+  }
+  20% {
+    transform: translate(-1px, 0.5px);
+    text-shadow: 2px 0 0 rgba(255, 80, 80, 0.2), -2px 0 0 rgba(80, 200, 140, 0.2);
+  }
+  40% {
+    transform: translate(1px, -0.5px);
+    text-shadow: -1px 0 0 rgba(80, 200, 140, 0.25), 1px 0 0 rgba(255, 80, 80, 0.15);
+  }
+  60% {
+    transform: translate(-0.5px, 0);
+    text-shadow: 1px 0 0 rgba(255, 80, 80, 0.2), -1px 0 0 rgba(80, 200, 140, 0.2);
+  }
+  80% {
+    transform: translate(0.5px, 0);
+    text-shadow: -2px 0 0 rgba(80, 200, 140, 0.15), 2px 0 0 rgba(255, 80, 80, 0.2);
+  }
 }
 
 .startup-screen__progress {
@@ -2928,13 +3298,91 @@ fieldset {
   padding: 1rem;
   background: rgba(0, 0, 0, 0.82);
   z-index: 80;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.onboarding-overlay--exiting {
+  animation: onboardingOverlayExit 0.5s ease forwards;
+}
+
+.onboarding-overlay--exiting .onboarding-shell {
+  animation: onboardingShellExit 0.5s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-overlay--exiting {
+    animation-duration: 0.2s;
+  }
+  .onboarding-overlay--exiting .onboarding-shell {
+    animation-duration: 0.2s;
+  }
+}
+
+@keyframes onboardingOverlayExit {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@keyframes onboardingShellExit {
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+}
+
+.onboarding-overlay__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.onboarding-overlay__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse 100% 100% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.4) 80%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+  pointer-events: none;
+}
+
+.onboarding-overlay__scanlines {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 2px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  animation: startupScanlines 0.12s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-overlay__scanlines {
+    animation: none;
+    opacity: 0.3;
+  }
+  .onboarding-intro__title--glitch,
+  .onboarding-brand__title--glitch {
+    animation: none;
+  }
 }
 
 /* Intro phase: lock + CONFIGURE AGENT PROFILE, then shell appears */
 .onboarding-intro {
   position: absolute;
   inset: 0;
-  z-index: 1;
+  z-index: 4;
   display: grid;
   place-items: center;
   gap: 1.25rem;
@@ -2974,6 +3422,18 @@ fieldset {
   text-transform: uppercase;
 }
 
+.onboarding-intro__title--glitch {
+  animation: startupGlitch 0.4s ease-in-out 2;
+}
+
+.onboarding-brand__title {
+  margin: 0;
+}
+
+.onboarding-brand__title--glitch {
+  animation: startupGlitch 0.5s ease-in-out 3;
+}
+
 .onboarding-intro__sub {
   margin: 0;
   font-size: 0.8rem;
@@ -2995,7 +3455,7 @@ fieldset {
 .unlock-overlay {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 5;
   display: grid;
   place-items: center;
   padding: 1.5rem;
@@ -3006,8 +3466,35 @@ fieldset {
 .unlock-overlay--welcome {
   position: fixed;
   z-index: 150;
-  animation: unlockOverlayIn 280ms ease both;
   pointer-events: none;
+}
+
+.unlock-overlay--welcome[data-variant="1"] {
+  animation: welcomeOverlayV1 280ms ease both;
+}
+
+.unlock-overlay--welcome[data-variant="2"] {
+  animation: welcomeOverlayV2 320ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+.unlock-overlay--welcome[data-variant="3"] {
+  animation: welcomeOverlayV3 300ms ease both;
+}
+
+.unlock-modal--welcome[data-variant="1"] {
+  animation: welcomeModalV1 400ms cubic-bezier(0.34, 1.2, 0.64, 1) 80ms both;
+}
+
+.unlock-modal--welcome[data-variant="2"] {
+  animation: welcomeModalV2 420ms cubic-bezier(0.34, 1.2, 0.64, 1) 60ms both;
+}
+
+.unlock-modal--welcome[data-variant="3"] {
+  animation: welcomeModalV3 380ms cubic-bezier(0.28, 1.1, 0.64, 1) 100ms both;
+}
+
+.unlock-modal--welcome[data-variant="2"][data-phase="verified"] .unlock-modal__icon--verified {
+  animation: welcomeIconV2 500ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
 .unlock-modal {
@@ -3068,13 +3555,20 @@ fieldset {
 
 @media (prefers-reduced-motion: reduce) {
   .unlock-overlay,
-  .unlock-overlay--welcome {
+  .unlock-overlay--welcome,
+  .unlock-overlay--welcome[data-variant="1"],
+  .unlock-overlay--welcome[data-variant="2"],
+  .unlock-overlay--welcome[data-variant="3"] {
     animation-duration: 120ms;
   }
-  .unlock-modal {
+  .unlock-modal,
+  .unlock-modal--welcome[data-variant="1"],
+  .unlock-modal--welcome[data-variant="2"],
+  .unlock-modal--welcome[data-variant="3"] {
     animation: none;
   }
-  .unlock-modal__icon--verified {
+  .unlock-modal__icon--verified,
+  .unlock-modal--welcome[data-variant="2"][data-phase="verified"] .unlock-modal__icon--verified {
     animation: none;
   }
   .unlock-modal[data-phase="verified"] .unlock-modal__line--highlight {
@@ -3088,6 +3582,84 @@ fieldset {
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes welcomeOverlayV1 {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes welcomeOverlayV2 {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes welcomeOverlayV3 {
+  from {
+    opacity: 0;
+    background: rgba(0, 0, 0, 0.4);
+  }
+  to {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.82);
+  }
+}
+
+@keyframes welcomeModalV1 {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes welcomeModalV2 {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes welcomeModalV3 {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes welcomeIconV2 {
+  from {
+    opacity: 0.5;
+    transform: scale(0.85) rotate(-6deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
   }
 }
 
@@ -3150,7 +3722,7 @@ fieldset {
 
 .onboarding-shell {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   width: min(760px, 100%);
   max-height: min(92vh, 920px);
   border-radius: 28px;

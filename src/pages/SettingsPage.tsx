@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Settings as SettingsIcon } from 'lucide-react'
+import { STARTUP_SOUND_DISABLED_KEY } from '../components/StartupAnimation'
 import { useAgentProfile } from '../hooks/useAgentProfile'
 import { useToast } from '../hooks/useToast'
 import { usePatientStore } from '../hooks/usePatientStore'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { usePwaUpdater } from '../lib/pwa'
 import { clearPatients } from '../lib/storage'
+
+function getStartupSoundDisabled(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(STARTUP_SOUND_DISABLED_KEY) === '1'
+}
 
 export const SettingsPage = () => {
   const navigate = useNavigate()
@@ -17,6 +23,21 @@ export const SettingsPage = () => {
   const { needRefresh } = usePwaUpdater()
   const [confirmClearAgent, setConfirmClearAgent] = useState(false)
   const [confirmFactoryReset, setConfirmFactoryReset] = useState(false)
+  const [startupSoundDisabled, setStartupSoundDisabled] = useState(getStartupSoundDisabled)
+
+  const handleStartupSoundToggle = (disabled: boolean) => {
+    if (disabled) {
+      window.localStorage.setItem(STARTUP_SOUND_DISABLED_KEY, '1')
+    } else {
+      window.localStorage.removeItem(STARTUP_SOUND_DISABLED_KEY)
+    }
+    setStartupSoundDisabled(disabled)
+    pushToast({
+      title: disabled ? 'Startup sound disabled' : 'Startup sound enabled',
+      description: disabled ? 'Sound will not play on app startup.' : 'Sound will play on next startup.',
+      tone: 'info',
+    })
+  }
 
   const handleClearAgent = () => {
     if (!confirmClearAgent) {
@@ -54,6 +75,35 @@ export const SettingsPage = () => {
           </p>
         </div>
       </section>
+
+      <article className="panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Sound</p>
+            <h3>Startup sound</h3>
+          </div>
+        </div>
+        <div className="settings-actions">
+          <div className="settings-action settings-action--toggle">
+            <div>
+              <strong>Play sound on startup</strong>
+              <p className="muted">Play the intake console sound when the app starts. Disable to keep startup silent.</p>
+            </div>
+            <label className="toggle-label">
+              <input
+                type="checkbox"
+                checked={!startupSoundDisabled}
+                onChange={(e) => handleStartupSoundToggle(!e.target.checked)}
+                aria-describedby="startup-sound-desc"
+              />
+              <span className="toggle-label__text">{startupSoundDisabled ? 'Off' : 'On'}</span>
+            </label>
+          </div>
+        </div>
+        <p id="startup-sound-desc" className="visually-hidden">
+          When on, startup sound plays on app load. When off, startup is silent.
+        </p>
+      </article>
 
       <article className="panel">
         <div className="section-heading">

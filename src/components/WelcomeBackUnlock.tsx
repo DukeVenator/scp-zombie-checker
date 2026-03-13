@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useAgentProfile } from '../hooks/useAgentProfile'
@@ -8,6 +8,11 @@ const WELCOME_DURATION_MS = 2200
 const PHASE_VERIFIED_MS = 600
 const DELAY_AFTER_STARTUP_MS = 200
 
+const WELCOME_VARIANTS = [1, 2, 3] as const
+function pickWelcomeVariant(): (typeof WELCOME_VARIANTS)[number] {
+  return WELCOME_VARIANTS[Math.floor(Math.random() * WELCOME_VARIANTS.length)]
+}
+
 function isBadgePage(pathname: string): boolean {
   return pathname === '/badge' || pathname === 'badge' || pathname.endsWith('/badge')
 }
@@ -15,6 +20,7 @@ function isBadgePage(pathname: string): boolean {
 export const WelcomeBackUnlock = () => {
   const location = useLocation()
   const { profile, showSetup } = useAgentProfile()
+  const variant = useMemo(() => pickWelcomeVariant(), [])
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState<'welcome' | 'verified'>('welcome')
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -61,8 +67,8 @@ export const WelcomeBackUnlock = () => {
   }
 
   return (
-    <div className="unlock-overlay unlock-overlay--welcome" aria-live="polite" aria-label="Welcome back, agent verified">
-      <div className="unlock-modal unlock-modal--welcome" data-phase={phase}>
+    <div className="unlock-overlay unlock-overlay--welcome" aria-live="polite" aria-label="Welcome back, agent verified" data-variant={String(variant)}>
+      <div className="unlock-modal unlock-modal--welcome" data-phase={phase} data-variant={String(variant)}>
         <div className="unlock-modal__icon-wrap">
           <ShieldCheck
             size={48}

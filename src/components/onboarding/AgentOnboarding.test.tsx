@@ -30,6 +30,7 @@ describe('AgentOnboarding', () => {
   it(
     'completes the first-run agent setup wizard',
     async () => {
+      window.sessionStorage.setItem('scp-zombie-checker:startup-done', '1')
       const user = userEvent.setup()
       render(
       <MemoryRouter initialEntries={['/']}>
@@ -38,7 +39,7 @@ describe('AgentOnboarding', () => {
     )
 
     expect(await screen.findByText(/configure agent profile/i, {}, { timeout: 2500 })).toBeInTheDocument()
-    await screen.findByLabelText(/Agent name/i, {}, { timeout: 6000 })
+    await screen.findByLabelText(/Agent name/i, {}, { timeout: 8000 })
 
     await user.type(screen.getByLabelText(/Agent name/i), 'Dana Voss')
     await user.type(screen.getByLabelText(/Callsign/i), 'MTF-11')

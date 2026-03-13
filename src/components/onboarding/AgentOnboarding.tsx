@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Lock, Shield, ShieldCheck, UserRoundCog } from 'lucide-react'
 import { useAgentProfile } from '../../hooks/useAgentProfile'
+import { useParticleCanvas } from '../../hooks/useParticleCanvas'
 import { useToast } from '../../hooks/useToast'
 import {
   agentProfileSchema,
@@ -22,19 +23,33 @@ export const AgentOnboarding = () => {
   const location = useLocation()
   const { profile, showSetup, completeSetup, closeSetup, isReady } = useAgentProfile()
   const { pushToast } = useToast()
+  const [startupDone, setStartupDone] = useState(
+    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('scp-zombie-checker:startup-done') === '1',
+  )
   const [intro, setIntro] = useState(() => !profile)
   const [booting, setBooting] = useState(() => !profile)
   const [unlocking, setUnlocking] = useState(false)
   const [unlockPhase, setUnlockPhase] = useState<'connect' | 'verified'>('connect')
+  const [exiting, setExiting] = useState(false)
   const [form, setForm] = useState<AgentProfile>(profile ?? defaultAgentProfile())
   const [error, setError] = useState('')
   const unlockTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const pendingProfileRef = useRef<AgentProfile | null>(null)
+  const profileToCompleteRef = useRef<AgentProfile | null>(null)
+  const canvasRef = useParticleCanvas(showSetup)
+
+  const ONBOARDING_EXIT_MS = 500
 
   const isBadgePage = location.pathname === '/badge' || location.pathname === 'badge' || location.pathname.endsWith('/badge')
 
   useEffect(() => {
-    if (!showSetup || profile) {
+    const onStartupDone = () => setStartupDone(true)
+    window.addEventListener('scp-startup-done', onStartupDone)
+    return () => window.removeEventListener('scp-startup-done', onStartupDone)
+  }, [])
+
+  useEffect(() => {
+    if (!showSetup || profile || !startupDone) {
       return
     }
     const introDurationMs = 1100
@@ -45,7 +60,7 @@ export const AgentOnboarding = () => {
       window.clearTimeout(t1)
       window.clearTimeout(t2)
     }
-  }, [profile, showSetup])
+  }, [profile, showSetup, startupDone])
 
   useEffect(() => {
     return () => {
@@ -54,11 +69,27 @@ export const AgentOnboarding = () => {
     }
   }, [])
 
-  const bootMessage = bootMessages[1]
+  useEffect(() => {
+    if (!exiting) return
+    const profileData = profileToCompleteRef.current
+    const t = window.setTimeout(() => {
+      if (profileData) {
+        completeSetup(profileData)
+        setForm(profileData)
+        pushToast({
+          title: 'Agent profile loaded',
+          description: `${profileData.callsign} is now the active reporting agent.`,
+          tone: 'success',
+        })
+      }
+      profileToCompleteRef.current = null
+      setExiting(false)
+    }, ONBOARDING_EXIT_MS)
+    return () => window.clearTimeout(t)
+  }, [exiting, completeSetup, pushToast])
 
-  if (isBadgePage || !isReady || !showSetup) {
-    return null
-  }
+  const bootMessage = bootMessages[1]
+  const shouldHide = isBadgePage || !isReady || !showSetup
 
   const handleSubmit = () => {
     const parsed = agentProfileSchema.safeParse(form)
@@ -75,27 +106,27 @@ export const AgentOnboarding = () => {
       const profileData = pendingProfileRef.current
       pendingProfileRef.current = null
       if (profileData) {
-        completeSetup(profileData)
-        setForm(profileData)
-        pushToast({
-          title: 'Agent profile loaded',
-          description: `${profileData.callsign} is now the active reporting agent.`,
-          tone: 'success',
-        })
+        profileToCompleteRef.current = profileData
+        setUnlocking(false)
+        setExiting(true)
+      } else {
+        setUnlocking(false)
       }
-      setUnlocking(false)
     }, 1300)
     unlockTimeoutsRef.current = [t1, t2]
   }
 
-  return (
-    <div className="onboarding-overlay">
+  return shouldHide ? null : (
+    <div className={`onboarding-overlay ${exiting ? 'onboarding-overlay--exiting' : ''}`}>
+      <canvas ref={canvasRef} className="onboarding-overlay__canvas" aria-hidden="true" />
+      <div className="onboarding-overlay__vignette" aria-hidden="true" />
+      <div className="onboarding-overlay__scanlines" aria-hidden="true" />
       {intro && (
         <div className="onboarding-intro" aria-live="polite">
           <div className="onboarding-intro__lock">
             <Shield size={64} strokeWidth={1.5} />
           </div>
-          <p className="onboarding-intro__title">CONFIGURE AGENT PROFILE</p>
+          <p className="onboarding-intro__title onboarding-intro__title--glitch">CONFIGURE AGENT PROFILE</p>
           <p className="onboarding-intro__sub">Authorization required — secure intake node</p>
         </div>
       )}
@@ -123,7 +154,9 @@ export const AgentOnboarding = () => {
           </div>
           <div>
             <p className="eyebrow">SCP secure intake node</p>
-            <h2>{booting ? 'Booting field console' : 'Configure agent profile'}</h2>
+            <h2 className={booting ? 'onboarding-brand__title onboarding-brand__title--glitch' : 'onboarding-brand__title'}>
+              {booting ? 'Booting field console' : 'Configure agent profile'}
+            </h2>
             <p className="muted">
               {booting
                 ? bootMessage

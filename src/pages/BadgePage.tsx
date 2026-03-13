@@ -6,10 +6,12 @@ import { decodeBadgePayload, getBadgeUrl, type BadgePayload } from '../lib/badge
 import {
   getClearedCongrats,
   getContainmentHumor,
+  getCriticalTerminationCopy,
   getInfectionHumor,
   getStatusHumor,
   getSymptomDarkJoke,
 } from '../lib/badge-copy'
+import { useBadgeBackgroundCanvas } from '../hooks/useBadgeBackgroundCanvas'
 import { usePatientStore } from '../hooks/usePatientStore'
 
 const HIGH_THREAT_CONTAINMENT = ['Escaped', 'Known Threat']
@@ -96,19 +98,36 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
     ? new Date(payload.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : '—'
 
-  const infectionHumor = getInfectionHumor(payload.infectionPct)
-  const isClearedNormal = payload.status === 'Cleared' && (payload.containment === 'Normal' || !payload.containment)
-  const clearedCongrats = isClearedNormal ? getClearedCongrats() : null
-  const containmentHumor = payload.containment ? getContainmentHumor(payload.containment) : null
-  const statusHumor = getStatusHumor(payload.status)
-  const symptomJoke = !isClearedNormal && payload.infectionPct >= 50 ? getSymptomDarkJoke(payload.id) : null
+  const infectionHumor = getInfectionHumor(payload.infectionPct, severity, payload.id)
+  const clearedCongrats = severity === 'cleared' ? getClearedCongrats(payload.id) : null
+  const containmentHumor = payload.containment
+    ? getContainmentHumor(payload.containment, severity, payload.id)
+    : null
+  const statusHumor = getStatusHumor(payload.status, severity, payload.id)
+  const symptomJoke =
+    severity !== 'cleared' && payload.infectionPct >= 50 ? getSymptomDarkJoke(payload.id) : null
+  const criticalTermination =
+    severity === 'critical' ? getCriticalTerminationCopy(payload.id) : null
+
+  const badgeCanvasRef = useBadgeBackgroundCanvas(true, severity)
+
+  const backgroundLayer = (
+    <div className="badge-page__bg" aria-hidden="true">
+      <canvas ref={badgeCanvasRef} className="badge-page__bg-canvas" />
+      <div className={`badge-page__vignette badge-page__vignette--${severity}`} />
+      <div className={`badge-page__scanlines badge-page__scanlines--${severity}`} />
+    </div>
+  )
 
   if (loading) {
     return (
       <div className={`badge-page badge-page--entered badge-page--severity-${severity}`} data-severity={severity}>
-        <div className="badge-page__loading">
-          <Shield size={32} className="badge-page__loading-icon" aria-hidden />
-          <span>Loading document…</span>
+        {backgroundLayer}
+        <div className="badge-page__content">
+          <div className="badge-page__loading">
+            <Shield size={32} className="badge-page__loading-icon" aria-hidden />
+            <span>Loading document…</span>
+          </div>
         </div>
       </div>
     )
@@ -120,6 +139,8 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
       data-severity={severity}
       data-testid="badge-page"
     >
+      {backgroundLayer}
+      <div className="badge-page__content">
       {unlockVisible && (
         <div
           className={`badge-unlock-overlay badge-unlock-overlay--${severity}`}
@@ -181,13 +202,29 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
         role="document"
         data-testid="badge-doc"
       >
-        <div className="badge-doc__stripe badge-doc__stripe--entry" data-testid="badge-doc-stripe">
-          <Shield size={20} />
-          <span>SCP FIELD INTAKE — SUBJECT CHECK</span>
-          <Shield size={20} />
+        <div
+          className={`badge-doc__stripe badge-doc__stripe--entry ${severity === 'critical' ? 'badge-doc__stripe--hazard' : ''}`}
+          data-testid="badge-doc-stripe"
+        >
+          {severity === 'critical' ? (
+            <>
+              <AlertOctagon size={20} aria-hidden />
+              <span>CONTAINMENT HAZARD — TERMINATE</span>
+              <AlertOctagon size={20} aria-hidden />
+            </>
+          ) : (
+            <>
+              <Shield size={20} aria-hidden />
+              <span>SCP FIELD INTAKE — SUBJECT CHECK</span>
+              <Shield size={20} aria-hidden />
+            </>
+          )}
         </div>
 
-        <header className="badge-doc__header badge-doc__header--entry" data-testid="badge-doc-header">
+        <header
+          className={`badge-doc__header badge-doc__header--entry ${severity === 'critical' ? 'badge-doc__header--hazard' : ''}`}
+          data-testid="badge-doc-header"
+        >
           <div className="badge-doc__logo">
             <ShieldAlert size={28} />
             <span>ZOMBIE CHECKER</span>
@@ -239,10 +276,13 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
               </dl>
               <p className="badge-doc__summary">{payload.summary}</p>
 
-              {/* Badge-only humor */}
+              {/* Badge-only humour: severity-appropriate only; critical shows hostile termination copy */}
               <div className="badge-doc__humor">
                 {clearedCongrats && (
                   <p className="badge-doc__humor-line badge-doc__humor--cleared">{clearedCongrats}</p>
+                )}
+                {criticalTermination && (
+                  <p className="badge-doc__humor-line badge-doc__humor--critical">{criticalTermination}</p>
                 )}
                 {infectionHumor && (
                   <p className="badge-doc__humor-line badge-doc__humor--infection">{infectionHumor}</p>
@@ -253,7 +293,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
                 {statusHumor && (
                   <p className="badge-doc__humor-line badge-doc__humor--status">{statusHumor}</p>
                 )}
-                {symptomJoke && (
+                {symptomJoke && severity !== 'critical' && (
                   <p className="badge-doc__humor-line badge-doc__humor--symptom">{symptomJoke}</p>
                 )}
               </div>
@@ -285,6 +325,7 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
           <p className="muted">You have this subject in your SCP Checker. Open to edit or re-assess.</p>
         </div>
       )}
+      </div>
     </div>
   )
 }

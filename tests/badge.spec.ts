@@ -313,3 +313,79 @@ test('badge page does not show welcome back overlay', async ({ page }) => {
   await expect(page.locator('.unlock-overlay--welcome')).not.toBeVisible()
   await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
 })
+
+test('badge page has background layer and content on top', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Cleared',
+    infectionPct: 15,
+    containment: 'Normal',
+    variant: 'Normal',
+    threatLevel: 'Low',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.badge-unlock-overlay')).not.toBeVisible({ timeout: 5000 })
+
+  await expect(page.locator('.badge-page__bg')).toBeVisible()
+  await expect(page.locator('.badge-page__bg-canvas')).toBeVisible()
+  await expect(page.locator('.badge-page__vignette')).toBeVisible()
+  await expect(page.locator('.badge-page__scanlines')).toBeVisible()
+  await expect(page.locator('.badge-page__content')).toBeVisible()
+  await expect(page.locator('.badge-page__content').locator('.badge-doc')).toBeVisible()
+})
+
+test('cleared badge shows SCP FIELD INTAKE stripe not hazard', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Cleared',
+    infectionPct: 10,
+    containment: 'Normal',
+    variant: 'Normal',
+    threatLevel: 'Low',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.getByText('SCP FIELD INTAKE — SUBJECT CHECK')).toBeVisible()
+  await expect(page.locator('.badge-doc__stripe--hazard')).not.toBeVisible()
+  await expect(page.getByText('CONTAINMENT HAZARD — TERMINATE')).not.toBeVisible()
+})
+
+test('critical badge shows hazard stripe and CONTAINMENT HAZARD TERMINATE', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Critical',
+    infectionPct: 75,
+    containment: 'Escaped',
+    variant: 'Alpha',
+    threatLevel: 'Critical',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.badge-unlock-overlay')).not.toBeVisible({ timeout: 5000 })
+
+  const stripe = page.locator('.badge-doc__stripe').first()
+  await expect(stripe).toHaveClass(/badge-doc__stripe--hazard/)
+  await expect(stripe.getByText('CONTAINMENT HAZARD — TERMINATE')).toBeVisible()
+  await expect(page.locator('.badge-doc__header')).toHaveClass(/badge-doc__header--hazard/)
+  await expect(page.locator('.badge-doc__humor--critical')).toBeVisible()
+})
+
+test('badge page severity-specific vignette and scanlines classes', async ({ page }) => {
+  const d = encodeBadgeParam({
+    ...basePayload,
+    status: 'Suspected',
+    infectionPct: 50,
+    containment: 'Normal',
+    variant: 'Normal',
+    threatLevel: 'Elevated',
+  })
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.badge-page__vignette--warning')).toBeVisible()
+  await expect(page.locator('.badge-page__scanlines--warning')).toBeVisible()
+})

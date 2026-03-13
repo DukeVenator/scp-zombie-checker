@@ -39,7 +39,14 @@ export const AppShell = () => {
             <Download size={16} />
             <span>A new version of SCP Zombie Checker is available.</span>
           </div>
-          <button className="update-banner__btn" onClick={() => updateServiceWorker(true)} type="button">
+          <button
+            className="update-banner__btn"
+            onClick={() => {
+              window.sessionStorage.setItem('scp-zombie-checker:startup-after-update', '1')
+              updateServiceWorker(true)
+            }}
+            type="button"
+          >
             Apply update &amp; reload
           </button>
         </div>

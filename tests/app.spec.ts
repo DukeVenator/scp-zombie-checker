@@ -14,15 +14,106 @@ const seedAgentProfile = async (page: Page) => {
   })
 }
 
+/** Clear startup-done so the SCP intake console startup screen shows. */
+const clearStartupDone = async (page: Page) => {
+  await page.addInitScript(() => {
+    window.sessionStorage.removeItem('scp-zombie-checker:startup-done')
+  })
+}
+
 const continueBtn = (page: Page) => page.locator('.step-card').getByRole('button', { name: /continue/i })
 const skipBtn = (page: Page) => page.locator('.step-nav').getByRole('button', { name: /skip/i })
 
-test('first run agent onboarding can activate a local agent profile', async ({ page }) => {
+test('startup screen shows SCP INTAKE CONSOLE and animation elements on first load', async ({ page }) => {
+  await clearStartupDone(page)
   await page.goto('/#/')
 
-  await expect(page.getByText('Booting field console')).toBeVisible()
-  // Boot sequence is 1800ms; wait for form so we're past it (CI can be slow)
-  await expect(page.getByRole('heading', { name: /configure agent profile/i })).toBeVisible({ timeout: 6000 })
+  const startup = page.getByTestId('startup-screen')
+  await expect(startup).toBeVisible({ timeout: 3000 })
+  await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
+  await expect(startup.getByText(/INITIALIZING|SYSTEM ONLINE/)).toBeVisible()
+  await expect(startup.locator('.startup-screen__canvas')).toBeVisible()
+  await expect(startup.locator('.startup-screen__vignette')).toBeVisible()
+  await expect(startup.locator('.startup-screen__scanlines')).toBeVisible()
+  await expect(startup.locator('.startup-screen__progress')).toBeVisible()
+  await expect(startup.locator('.startup-screen__seal')).toBeVisible()
+})
+
+test('startup screen shows ready phase then transitions to agent onboarding', async ({ page }) => {
+  await clearStartupDone(page)
+  await page.goto('/#/')
+
+  const startup = page.getByTestId('startup-screen')
+  await expect(startup).toBeVisible({ timeout: 3000 })
+  await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
+  await expect(startup.getByText('INITIALIZING...')).toBeVisible()
+  await expect(startup.getByText('SYSTEM ONLINE')).toBeVisible({ timeout: 5000 })
+  await expect(startup).not.toBeVisible({ timeout: 6000 })
+  await expect(page.getByText('Booting field console').or(page.getByRole('heading', { name: /configure agent profile/i }))).toBeVisible({ timeout: 3000 })
+})
+
+test('startup screen does not show on /badge route', async ({ page }) => {
+  await clearStartupDone(page)
+  const d = Buffer.from(
+    JSON.stringify({
+      v: 1,
+      id: 'startup-skip-id',
+      name: 'Badge Subject',
+      status: 'Cleared',
+      infectionPct: 10,
+      updatedAt: '2026-03-12T12:00:00.000Z',
+      summary: 'Test.',
+      containment: 'Normal',
+      variant: 'Normal',
+      threatLevel: 'Low',
+    }),
+    'utf-8',
+  )
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+  await page.goto(`/#/badge?d=${d}`)
+
+  await expect(page.getByTestId('startup-screen')).not.toBeVisible({ timeout: 2000 })
+  await expect(page.getByText('Loading document…').or(page.locator('.badge-doc'))).toBeVisible({ timeout: 6000 })
+})
+
+test('startup screen shows after apply-update flag is set', async ({ page }) => {
+  await seedAgentProfile(page)
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('scp-zombie-checker:startup-after-update', '1')
+    window.sessionStorage.setItem('scp-zombie-checker:startup-done', '1')
+  })
+  await page.goto('/#/')
+
+  const startup = page.getByTestId('startup-screen')
+  await expect(startup).toBeVisible({ timeout: 3000 })
+  await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
+})
+
+test('first run onboarding has background canvas vignette and scanlines', async ({ page }) => {
+  await clearStartupDone(page)
+  await page.goto('/#/')
+
+  await expect(page.getByTestId('startup-screen')).not.toBeVisible({ timeout: 8000 })
+  await expect(page.getByText('Booting field console').or(page.getByRole('heading', { name: /configure agent profile/i }))).toBeVisible({ timeout: 6000 })
+
+  const overlay = page.locator('.onboarding-overlay')
+  await expect(overlay).toBeVisible()
+  await expect(overlay.locator('.onboarding-overlay__canvas')).toBeVisible()
+  await expect(overlay.locator('.onboarding-overlay__vignette')).toBeVisible()
+  await expect(overlay.locator('.onboarding-overlay__scanlines')).toBeVisible()
+  await expect(overlay.locator('.onboarding-shell')).toBeVisible()
+})
+
+test('first run agent onboarding can activate a local agent profile', async ({ page }) => {
+  await clearStartupDone(page)
+  await page.goto('/#/')
+
+  await expect(page.getByText('Booting field console')).toBeVisible({ timeout: 8000 })
+  // Boot sequence ~2.4s; wait for form so we're past it (CI can be slow)
+  await expect(page.getByRole('heading', { name: /configure agent profile/i })).toBeVisible({ timeout: 10000 })
 
   await page.getByLabel('Agent name').fill('Dana Voss')
   await page.getByLabel('Callsign').fill('MTF-11')
@@ -32,6 +123,19 @@ test('first run agent onboarding can activate a local agent profile', async ({ p
 
   await expect(page.getByRole('heading', { name: 'SCP Zombie Checker' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
+})
+
+test('welcome back overlay has animation variant when shown', async ({ page }) => {
+  await seedAgentProfile(page)
+  await page.addInitScript(() => {
+    window.sessionStorage.setItem('scp-zombie-checker:startup-done', '1')
+  })
+  await page.goto('/#/')
+
+  const welcome = page.locator('.unlock-overlay--welcome')
+  await expect(welcome).toBeVisible({ timeout: 2000 })
+  await expect(welcome).toHaveAttribute('data-variant', /^[123]$/)
+  await expect(welcome.getByText(/WELCOME BACK|CLEARANCE VERIFIED/i)).toBeVisible()
 })
 
 test('dashboard loads and navigation works', async ({ page }) => {

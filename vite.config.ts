@@ -9,7 +9,7 @@ export default defineConfig(({ command }) => ({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icons/scp-icon.svg'],
+      includeAssets: ['icons/scp-icon.svg', 'sounds/startup.mp3'],
       manifest: {
         name: 'SCP Zombie Checker',
         short_name: 'SCP Checker',
