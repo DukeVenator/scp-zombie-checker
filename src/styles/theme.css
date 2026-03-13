@@ -1964,9 +1964,16 @@ fieldset {
   gap: 1rem;
 }
 
+/* Single column by default to avoid QR overlapping on standalone /badge (e.g. GitHub Pages) */
 .badge-doc__row--main {
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   align-items: start;
+}
+
+@media (min-width: 900px) {
+  .badge-doc__row--main {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 200px);
+  }
 }
 
 .badge-doc__col--info {
