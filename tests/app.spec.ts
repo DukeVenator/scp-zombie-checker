@@ -374,7 +374,9 @@ test('status editor and variant wizard work on patient detail page', async ({ pa
 
   // Open status wizard
   await page.getByRole('button', { name: /change status/i }).click()
-  await expect(page.getByText(/select containment status/i)).toBeVisible()
+  await expect(page.getByRole('heading', { name: /what do you want to do/i })).toBeVisible()
+  await page.getByRole('button', { name: /update containment status/i }).click()
+  await expect(page.getByRole('heading', { name: /select containment status/i })).toBeVisible()
 
   // Pick Threat — triggers warning
   await page.locator('.step-option-btn', { hasText: 'Threat' }).first().click()
@@ -425,7 +427,6 @@ test('export badge modal shows Exported by when agent profile is set', async ({ 
   await page.locator('.step-option-btn', { hasText: 'YES' }).click()
   await continueBtn(page).click()
   await page.locator('.step-option-btn', { hasText: 'Low' }).click()
-  await continueBtn(page).click()
   await skipBtn(page).click()
   await skipBtn(page).click()
   await page.getByRole('button', { name: /save patient/i }).click()
@@ -433,9 +434,9 @@ test('export badge modal shows Exported by when agent profile is set', async ({ 
   await expect(page.getByRole('heading', { name: 'Export Test' })).toBeVisible()
   await page.getByRole('button', { name: /export badge/i }).click()
 
-  await expect(page.getByText('Exported by')).toBeVisible()
-  await expect(page.getByText(/MTF-11/)).toBeVisible()
-  await expect(page.getByText(/Dana Voss/)).toBeVisible()
+  await expect(page.getByRole('dialog').getByText('Exported by')).toBeVisible()
+  await expect(page.getByRole('dialog').getByText(/MTF-11/)).toBeVisible()
+  await expect(page.getByRole('dialog').getByText(/Dana Voss/)).toBeVisible()
 })
 
 test('patient with four symptoms gets Suspected status and infection above 40%', async ({ page }) => {
@@ -456,19 +457,22 @@ test('patient with four symptoms gets Suspected status and infection above 40%',
   await page.locator('.step-option-btn', { hasText: 'YES' }).click()
   await continueBtn(page).click()
   await page.locator('.step-option-btn', { hasText: 'Low' }).click()
-  await continueBtn(page).click()
-  // Symptoms: tick 4 (aggression, decay, violent response, incoherent speech)
-  await page.getByLabel(/aggression/i).click()
-  await page.getByLabel(/visible decay/i).click()
-  await page.getByLabel(/violent response/i).click()
-  await page.getByLabel(/incoherent speech/i).click()
+  await expect(page.getByRole('heading', { name: /observed symptoms/i })).toBeVisible({ timeout: 10000 })
+  await page.locator('.symptom-card', { hasText: 'Aggression' }).click()
+  await page.getByRole('button', { name: /acknowledged/i }).click()
+  await page.locator('.symptom-card', { hasText: 'Visible decay' }).click()
+  await page.getByRole('button', { name: /acknowledged/i }).click()
+  await page.locator('.symptom-card', { hasText: 'Violent response' }).click()
+  await page.getByRole('button', { name: /acknowledged/i }).click()
+  await page.locator('.symptom-card', { hasText: 'Incoherent speech' }).click()
+  await page.getByRole('button', { name: /acknowledged/i }).click()
   await continueBtn(page).click()
   await skipBtn(page).click()
   await page.getByRole('button', { name: /save patient/i }).click()
 
   await expect(page.getByRole('heading', { name: 'Symptom Test' })).toBeVisible()
-  await expect(page.getByText(/Suspected|potential threat|40%/i)).toBeVisible({ timeout: 5000 })
-  await expect(page.getByText(/\d+%/).filter({ hasNotText: '0%' })).toBeVisible()
+  await expect(page.locator('.badge--suspected').first()).toBeVisible({ timeout: 5000 })
+  await expect(page.getByText(/\d+%/).filter({ hasNotText: '0%' }).first()).toBeVisible()
 })
 
 test('new patient wizard accepts a patient photo upload', async ({ page }) => {

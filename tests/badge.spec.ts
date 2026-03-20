@@ -67,7 +67,7 @@ test('badge page with valid payload shows document content', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'E2E Badge Subject' })).toBeVisible()
   await expect(page.locator('.badge-doc__meta').getByText('Cleared').first()).toBeVisible()
   await expect(page.getByText('25%')).toBeVisible()
-  await expect(page.getByText('Low anomaly. Standard observation.')).toBeVisible()
+  await expect(page.locator('.badge-doc__summary').getByText('Low anomaly. Standard observation.')).toBeVisible()
   await expect(page.getByText('Scan to view or update this record')).toBeVisible()
   await expect(page.locator('.badge-doc__qr-wrap')).toBeVisible()
 })
@@ -85,9 +85,9 @@ test('badge page shows Exported by when payload includes exportedBy', async ({ p
   await page.goto(`/#/badge?d=${d}`)
 
   await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 8000 })
-  await expect(page.getByText('Exported by')).toBeVisible()
-  await expect(page.getByText(/MTF-11/)).toBeVisible()
-  await expect(page.getByText(/Dana Voss/)).toBeVisible()
+  await expect(page.locator('.badge-doc').getByText('Exported by')).toBeVisible()
+  await expect(page.locator('.badge-doc').getByText(/MTF-11/)).toBeVisible()
+  await expect(page.locator('.badge-doc').getByText(/Dana Voss/)).toBeVisible()
 })
 
 test('badge page at mobile viewport shows stacked layout with subject info and QR visible', async ({ page }) => {
@@ -287,7 +287,7 @@ test('badge page shows warning unlock overlay and unlocking animation', async ({
   await page.goto(`/#/badge?d=${d}`)
 
   await expect(page.locator('.badge-unlock-overlay.badge-unlock-overlay--warning')).toBeVisible({ timeout: 6000 })
-  await expect(page.getByText('ELEVATED RISK').or(page.getByText('VERIFYING…'))).toBeVisible()
+  await expect(page.locator('.badge-unlock-overlay').getByText(/ELEVATED RISK|VERIFYING…/)).toBeVisible()
   await expect(page.getByText('VERIFY THREAT LEVEL')).toBeVisible({ timeout: 2000 })
   await expect(page.locator('.badge-unlock-overlay')).not.toBeVisible({ timeout: 5000 })
   await expect(page.locator('.badge-doc.badge-doc--unlocking-warning')).toBeVisible()
