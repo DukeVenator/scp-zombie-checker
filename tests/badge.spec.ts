@@ -59,13 +59,10 @@ test('badge page with valid payload shows document content', async ({ page }) =>
   })
   await page.goto(`/#/badge?d=${d}`)
 
-  // Loading state may be 0ms when prefers-reduced-motion; wait for doc
-  // In CI the app boot can be slow enough that the initial badge loading state
-  // may take a little longer than our previous 8s window.
-  const badgeDoc = page.locator('.badge-doc')
-  const loadingText = page.getByText('Loading document…')
-  await expect(badgeDoc.or(loadingText)).toBeVisible({ timeout: 15000 })
-  await expect(badgeDoc).toBeVisible({ timeout: 15000 })
+  // CI can occasionally be slow on the very first badge render, so wait for a
+  // stable page-level marker first, then for the document body.
+  await expect(page.locator('[data-testid="badge-page"]')).toBeVisible({ timeout: 30000 })
+  await expect(page.locator('.badge-doc')).toBeVisible({ timeout: 30000 })
 
   await expect(page.getByText(/SCP FIELD INTAKE — SUBJECT CHECK/i)).toBeVisible()
   await expect(page.getByText(/DOC #E2E/i)).toBeVisible()
