@@ -55,7 +55,10 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
   const [unlockPhase, setUnlockPhase] = useState<'lock' | 'verified'>('lock')
 
   useEffect(() => {
-    const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const reduceMotion =
+      typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const delay = reduceMotion ? 0 : LOADING_MS
     const t = setTimeout(() => setLoading(false), delay)
     return () => clearTimeout(t)
@@ -70,7 +73,10 @@ function BadgeContent({ payload, badgeUrl }: { payload: BadgePayload; badgeUrl: 
   /* Unlock overlay for all severities: lock → verified, then hide (defer setState to avoid sync update in effect) */
   useEffect(() => {
     if (loading) return
-    const reduceMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const reduceMotion =
+      typeof window !== 'undefined'
+      && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const id = requestAnimationFrame(() => {
       setUnlockVisible(true)
       setUnlockPhase('lock')
