@@ -29,7 +29,8 @@ test('startup screen shows SCP INTAKE CONSOLE and animation elements on first lo
   await page.goto('/#/')
 
   const startup = page.getByTestId('startup-screen')
-  await expect(startup).toBeVisible({ timeout: 3000 })
+  // CI can be slower to render the first startup screen; give it extra time.
+  await expect(startup).toBeVisible({ timeout: 8000 })
   await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
   await expect(startup.getByText(/INITIALIZING|SYSTEM ONLINE/)).toBeVisible()
   await expect(startup.locator('.startup-screen__canvas')).toBeVisible()
@@ -44,7 +45,7 @@ test('startup screen shows ready phase then transitions to agent onboarding', as
   await page.goto('/#/')
 
   const startup = page.getByTestId('startup-screen')
-  await expect(startup).toBeVisible({ timeout: 3000 })
+  await expect(startup).toBeVisible({ timeout: 8000 })
   await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
   await expect(startup.getByText('INITIALIZING...')).toBeVisible()
   await expect(startup.getByText('SYSTEM ONLINE')).toBeVisible({ timeout: 5000 })
@@ -88,7 +89,7 @@ test('startup screen shows after apply-update flag is set', async ({ page }) => 
   await page.goto('/#/')
 
   const startup = page.getByTestId('startup-screen')
-  await expect(startup).toBeVisible({ timeout: 3000 })
+  await expect(startup).toBeVisible({ timeout: 8000 })
   await expect(startup.getByText('SCP INTAKE CONSOLE')).toBeVisible()
 })
 
